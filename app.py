@@ -59,5 +59,6 @@ def ficha(venue_id):
 if __name__ == "__main__":
     # Asegura que la base exista antes de abrir la app (no borra nada).
     database.crear_base()
-    print("CRM Bragi corriendo en http://localhost:5000  (Ctrl+C para parar)")
-    app.run(debug=True, port=5000)
+    # Puerto 5001: en Mac el 5000 lo ocupa AirPlay / Centro de Control.
+    print("CRM Bragi corriendo en http://localhost:5001  (Ctrl+C para parar)")
+    app.run(debug=True, port=5001)

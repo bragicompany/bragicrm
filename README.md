@@ -72,7 +72,7 @@ Si un lugar ya estaba guardado, **no se duplica**.
 ```bash
 python3 app.py
 ```
-Abre **http://localhost:5000**. Veras la lista con filtros (ciudad, artista, categoría,
+Abre **http://localhost:5001**. Veras la lista con filtros (ciudad, artista, categoría,
 estado). Haz clic en un nombre para ver su **ficha** completa. Para parar la app: `Ctrl+C`.
 
 ---
