@@ -52,7 +52,8 @@ REDES_DOMINIOS = [
 EMAIL_BASURA = (
     "example.", "sentry.", "wixpress.", "godaddy", "@2x", ".png", ".jpg", ".gif",
     "@sentry", "@domain.", "yourdomain", "yoursite", "yourname", "youremail",
-    "user@domain", "email@domain",
+    "user@domain", "email@domain", "your@email", "@mysite.", "example@", "@example",
+    "@email.com",
 )
 
 
