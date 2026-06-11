@@ -98,6 +98,74 @@
     <button class="btn" type="submit" style="margin-top:14px">Guardar cambios</button>
   </form>
 
+  <!-- CORREOS: borradores con IA + aprobacion #2 -->
+  <div id="correos" style="margin-top:28px">
+    <h2 style="font-size:18px;margin-bottom:4px">Correos (borradores)</h2>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:14px">
+      La IA escribe un borrador; tú lo revisas, editas y apruebas. Nada se envía aún (eso es la Fase 5).
+      Puedes generar con distintos ganchos y compararlos.
+    </div>
+
+    {% if correo_ok %}<div class="aviso-ok">✓ Borrador generado. Revísalo abajo.</div>{% endif %}
+    {% if correo_error %}<div class="aviso-error">⚠ {{ correo_error }}</div>{% endif %}
+
+    <!-- Generar un borrador -->
+    <form method="post" action="{{ url_for('generar_correo', venue_id=v.id) }}" class="form-actividad">
+      {% if v.artista %}
+        <label class="ancho">Gancho (ángulo del correo)
+          <select name="gancho">
+            {% for g in ganchos %}
+              <option value="{{ loop.index0 }}">{{ loop.index }}. {{ g[:90] }}{% if g|length > 90 %}…{% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="btn" type="submit">✍️ Generar borrador con IA</button>
+        <span style="font-size:12px;color:#9ca3af;margin-left:8px">Artista: {{ v.artista }} · cuesta fracciones de centavo</span>
+      {% else %}
+        <div style="color:#b45309;font-size:14px">Asigna un <strong>artista</strong> a este venue (arriba) para poder generar el correo.</div>
+      {% endif %}
+    </form>
+
+    <!-- Borradores existentes -->
+    {% if mensajes %}
+      <div class="timeline">
+        {% for m in mensajes %}
+          <div class="evento" style="border-left-color:{% if m.estado=='aprobado' %}#0a7d40{% else %}#2b4eff{% endif %}">
+            <div class="evento-cab">
+              <span class="chip est-{{ 'calificado' if m.estado=='aprobado' else 'nuevo' }}">{{ m.estado }}</span>
+              {% if m.gancho %}<span style="font-size:12px;color:#6b7280">gancho: {{ m.gancho[:60] }}{% if m.gancho|length > 60 %}…{% endif %}</span>{% endif %}
+              <span class="evento-fecha" style="margin-left:auto">{{ m.created_at }}</span>
+            </div>
+            <form method="post" action="{{ url_for('guardar_mensaje', mensaje_id=m.id) }}">
+              <label class="lbl-correo">Asunto
+                <input type="text" name="asunto" value="{{ m.asunto or '' }}">
+              </label>
+              <label class="lbl-correo">Cuerpo
+                <textarea name="cuerpo" rows="8">{{ m.cuerpo or '' }}</textarea>
+              </label>
+              <button class="btn gris" type="submit">Guardar cambios</button>
+            </form>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
+                {% if m.estado != 'aprobado' %}
+                  <button class="btn verde" name="accion" value="aprobar">✅ Aprobar</button>
+                {% else %}
+                  <button class="btn gris" name="accion" value="reabrir">↩︎ Volver a borrador</button>
+                {% endif %}
+              </form>
+              <form method="post" action="{{ url_for('borrar_mensaje', mensaje_id=m.id) }}"
+                    onsubmit="return confirm('¿Borrar este borrador?')">
+                <button class="btn rojo" type="submit">🗑️ Borrar</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="color:#9ca3af;font-size:14px;margin-top:12px">Todavía no hay borradores. Genera uno arriba.</div>
+    {% endif %}
+  </div>
+
   <!-- LINEA DE TIEMPO: historial de contacto del venue -->
   <div id="actividades" style="margin-top:28px">
     <h2 style="font-size:18px;margin-bottom:4px">Línea de tiempo</h2>

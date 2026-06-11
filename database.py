@@ -81,6 +81,27 @@ def crear_base():
         )
         """
     )
+    # Tabla de mensajes de correo (borradores de la IA). Un venue puede tener varios
+    # (para probar distintos ganchos y compararlos).
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS mensajes (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            venue_id     INTEGER NOT NULL,
+            asunto       TEXT,
+            cuerpo       TEXT,
+            estado       TEXT DEFAULT 'borrador',  -- borrador / aprobado / enviado
+            gancho       TEXT,    -- que angulo se uso (para tests A/B)
+            modelo       TEXT,    -- que modelo lo genero
+            abierto      INTEGER DEFAULT 0,  -- 0/1 (se llena en Fase 5)
+            respondido   INTEGER DEFAULT 0,  -- 0/1 (Fase 5)
+            fecha_envio  TEXT,
+            created_at   TEXT,
+            updated_at   TEXT,
+            FOREIGN KEY (venue_id) REFERENCES venues(id)
+        )
+        """
+    )
     conn.commit()
     conn.close()
     print(f"Base de datos lista: {DB_FILE}")
@@ -288,6 +309,75 @@ def listar_recordatorios():
     ).fetchall()
     conn.close()
     return filas
+
+
+# ---------------------------------------------------------------------------
+# Mensajes de correo (borradores de la IA) — Fase 4
+# ---------------------------------------------------------------------------
+
+def agregar_mensaje(venue_id, asunto, cuerpo, gancho=None, modelo=None, estado="borrador"):
+    """Guarda un borrador de correo. Devuelve el id del mensaje creado."""
+    ahora = datetime.now().isoformat(timespec="seconds")
+    conn = conectar()
+    cur = conn.execute(
+        """INSERT INTO mensajes (venue_id, asunto, cuerpo, estado, gancho, modelo, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (venue_id, asunto, cuerpo, estado, gancho, modelo, ahora, ahora),
+    )
+    conn.commit()
+    nuevo_id = cur.lastrowid
+    conn.close()
+    return nuevo_id
+
+
+def listar_mensajes(venue_id):
+    """Devuelve los mensajes de un venue, del mas reciente al mas antiguo."""
+    conn = conectar()
+    filas = conn.execute(
+        "SELECT * FROM mensajes WHERE venue_id = ? ORDER BY created_at DESC, id DESC",
+        (venue_id,),
+    ).fetchall()
+    conn.close()
+    return filas
+
+
+def obtener_mensaje(mensaje_id):
+    """Devuelve un mensaje por su id."""
+    conn = conectar()
+    fila = conn.execute("SELECT * FROM mensajes WHERE id = ?", (mensaje_id,)).fetchone()
+    conn.close()
+    return fila
+
+
+# Campos del mensaje que se pueden editar desde la pantalla de aprobacion.
+CAMPOS_MENSAJE_EDITABLES = {"asunto", "cuerpo", "estado"}
+
+
+def actualizar_mensaje(mensaje_id, campos):
+    """Actualiza asunto/cuerpo/estado de un mensaje. Devuelve filas afectadas."""
+    seguros = {k: v for k, v in campos.items() if k in CAMPOS_MENSAJE_EDITABLES}
+    if not seguros:
+        return 0
+    seguros["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    asignaciones = ", ".join(f"{k} = ?" for k in seguros.keys())
+    valores = list(seguros.values()) + [mensaje_id]
+    conn = conectar()
+    cur = conn.execute(f"UPDATE mensajes SET {asignaciones} WHERE id = ?", valores)
+    conn.commit()
+    afectadas = cur.rowcount
+    conn.close()
+    return afectadas
+
+
+def eliminar_mensaje(mensaje_id):
+    """Borra un mensaje. Devuelve su venue_id (para redirigir)."""
+    conn = conectar()
+    fila = conn.execute("SELECT venue_id FROM mensajes WHERE id = ?", (mensaje_id,)).fetchone()
+    venue_id = fila["venue_id"] if fila else None
+    conn.execute("DELETE FROM mensajes WHERE id = ?", (mensaje_id,))
+    conn.commit()
+    conn.close()
+    return venue_id
 
 
 if __name__ == "__main__":

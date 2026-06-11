@@ -16,6 +16,8 @@ from urllib.parse import quote_plus
 from flask import Flask, render_template, request, abort, redirect, url_for
 
 import database
+import artistas
+import ai_email
 
 app = Flask(__name__)
 
@@ -105,7 +107,19 @@ def ficha(venue_id):
         abort(404)
     guardado = request.args.get("guardado")  # mensaje "cambios guardados"
     actividades = database.listar_actividades(venue_id)
-    return render_template("ficha.html", v=venue, guardado=guardado, actividades=actividades)
+    mensajes = database.listar_mensajes(venue_id)
+    perfil = artistas.obtener(venue["artista"]) if venue["artista"] else None
+    ganchos = perfil.get("ganchos", []) if perfil else []
+    return render_template(
+        "ficha.html",
+        v=venue,
+        guardado=guardado,
+        actividades=actividades,
+        mensajes=mensajes,
+        ganchos=ganchos,
+        correo_ok=request.args.get("correo_ok"),
+        correo_error=request.args.get("correo_error"),
+    )
 
 
 # Campos que el formulario de la ficha puede editar.
@@ -167,6 +181,65 @@ def borrar_actividad(actividad_id):
 def agenda():
     recordatorios = database.listar_recordatorios()
     return render_template("agenda.html", recordatorios=recordatorios)
+
+
+@app.route("/venue/<int:venue_id>/generar-correo", methods=["POST"])
+def generar_correo(venue_id):
+    venue = database.obtener_venue(venue_id)
+    if venue is None:
+        abort(404)
+    try:
+        indice = int(request.form.get("gancho", 0))
+    except (TypeError, ValueError):
+        indice = 0
+    try:
+        borrador = ai_email.generar_borrador(venue, indice_gancho=indice)
+        database.agregar_mensaje(
+            venue_id=venue_id,
+            asunto=borrador["asunto"],
+            cuerpo=borrador["cuerpo"],
+            gancho=borrador["gancho"],
+            modelo=borrador["modelo"],
+        )
+        destino = url_for("ficha", venue_id=venue_id, correo_ok="1")
+    except ai_email.FaltaLlaveError as e:
+        destino = url_for("ficha", venue_id=venue_id, correo_error=str(e))
+    except Exception as e:  # error de la API u otro — mostrarlo en lenguaje simple
+        destino = url_for("ficha", venue_id=venue_id, correo_error=f"No se pudo generar: {e}")
+    return redirect(destino + "#correos")
+
+
+@app.route("/mensaje/<int:mensaje_id>/guardar", methods=["POST"])
+def guardar_mensaje(mensaje_id):
+    m = database.obtener_mensaje(mensaje_id)
+    if m is None:
+        abort(404)
+    database.actualizar_mensaje(mensaje_id, {
+        "asunto": request.form.get("asunto") or None,
+        "cuerpo": request.form.get("cuerpo") or None,
+    })
+    return redirect(url_for("ficha", venue_id=m["venue_id"]) + "#correos")
+
+
+@app.route("/mensaje/<int:mensaje_id>/decidir", methods=["POST"])
+def decidir_mensaje(mensaje_id):
+    m = database.obtener_mensaje(mensaje_id)
+    if m is None:
+        abort(404)
+    accion = request.form.get("accion")
+    mapa = {"aprobar": "aprobado", "reabrir": "borrador"}
+    nuevo = mapa.get(accion)
+    if nuevo:
+        database.actualizar_mensaje(mensaje_id, {"estado": nuevo})
+    return redirect(url_for("ficha", venue_id=m["venue_id"]) + "#correos")
+
+
+@app.route("/mensaje/<int:mensaje_id>/borrar", methods=["POST"])
+def borrar_mensaje(mensaje_id):
+    venue_id = database.eliminar_mensaje(mensaje_id)
+    if venue_id is None:
+        return redirect(url_for("lista"))
+    return redirect(url_for("ficha", venue_id=venue_id) + "#correos")
 
 
 if __name__ == "__main__":
