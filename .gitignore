@@ -1,0 +1,18 @@
+# --- Secretos: NUNCA subir a Git ---
+.env
+
+# --- Base de datos: son datos reales, viven fuera de Git ---
+*.db
+*.sqlite
+*.sqlite3
+backups/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# --- Sistema ---
+.DS_Store

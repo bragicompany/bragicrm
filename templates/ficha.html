@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ v.nombre }} — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <a class="volver" href="/">&larr; Volver a la lista</a>
+  <h1 style="margin-top:10px">{{ v.nombre }}</h1>
+  <div style="margin-bottom:16px">
+    {% if v.categoria %}<span class="chip cat-{{ v.categoria }}">Categoria {{ v.categoria }}</span>{% endif %}
+    <span class="chip estado">{{ v.estado_pipeline or "nuevo" }}</span>
+  </div>
+
+  {% macro fila(etiqueta, valor) %}
+    <div class="k">{{ etiqueta }}</div>
+    <div class="val">{% if valor %}{{ valor }}{% else %}<span class="vacio-val">— (vacio)</span>{% endif %}</div>
+  {% endmacro %}
+
+  <div class="ficha-grid">
+    {{ fila("Artista objetivo", v.artista) }}
+    {{ fila("Ciudad", v.ciudad) }}
+    {{ fila("Estado / pais", (v.estado ~ " " ~ v.pais) if (v.estado or v.pais) else "") }}
+    {{ fila("Direccion", v.direccion) }}
+    {{ fila("Telefono", v.telefono) }}
+
+    <div class="k">Sitio web</div>
+    <div class="val">{% if v.web %}<a href="{{ v.web }}" target="_blank" rel="noopener">{{ v.web }}</a>{% else %}<span class="vacio-val">— (vacio)</span>{% endif %}</div>
+
+    <div class="k">Pagina de booking</div>
+    <div class="val">{% if v.pagina_booking %}<a href="{{ v.pagina_booking }}" target="_blank" rel="noopener">{{ v.pagina_booking }}</a>{% else %}<span class="vacio-val">— (se llena en Fase 2)</span>{% endif %}</div>
+
+    {{ fila("Email de booking", v.email) }}
+    {{ fila("Redes", v.redes) }}
+    {{ fila("Encargado / booker", v.encargado) }}
+    {{ fila("Capacidad aprox.", v.capacidad) }}
+    {{ fila("Genero que programa", v.genero) }}
+    {{ fila("Mejor canal", v.mejor_canal) }}
+    {{ fila("Rating (Google)", v.rating) }}
+    {{ fila("Proxima accion", v.proxima_accion) }}
+    {{ fila("Recordatorio", v.recordatorio_fecha) }}
+    {{ fila("Notas", v.notas) }}
+    {{ fila("Fuente", v.fuente) }}
+    {{ fila("Guardado el", v.created_at) }}
+  </div>
+
+{% endblock %}

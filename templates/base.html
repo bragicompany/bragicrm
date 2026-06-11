@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CRM Bragi{% endblock %}</title>
+  <style>
+    :root { --azul:#2b4eff; --gris:#6b7280; --linea:#e5e7eb; --fondo:#f7f8fa; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:var(--fondo); color:#111; }
+    header { background:#111; color:#fff; padding:14px 20px; }
+    header a { color:#fff; text-decoration:none; font-weight:600; font-size:18px; }
+    header .sub { color:#bbb; font-weight:400; font-size:13px; margin-left:8px; }
+    .contenedor { max-width:1100px; margin:0 auto; padding:20px; }
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:8px; overflow:hidden;
+            box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--linea); font-size:14px; }
+    th { background:#fafafa; color:var(--gris); font-weight:600; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
+    tr:hover td { background:#f5f7ff; }
+    a.fila { color:var(--azul); text-decoration:none; font-weight:600; }
+    .chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+    .chip.cat-A { background:#e6f0ff; color:#1d4ed8; }
+    .chip.cat-B { background:#fef3c7; color:#92400e; }
+    .chip.estado { background:#eef2f7; color:#374151; }
+    .filtros { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
+    .filtros label { display:block; font-size:11px; color:var(--gris); margin-bottom:3px; text-transform:uppercase; }
+    .filtros select { padding:7px 10px; border:1px solid var(--linea); border-radius:6px; background:#fff; font-size:14px; }
+    .btn { padding:8px 14px; border:none; border-radius:6px; background:var(--azul); color:#fff; font-weight:600; cursor:pointer; font-size:14px; text-decoration:none; display:inline-block; }
+    .btn.gris { background:#fff; color:#374151; border:1px solid var(--linea); }
+    .vacio { background:#fff; border-radius:8px; padding:40px; text-align:center; color:var(--gris); }
+    .conteo { color:var(--gris); font-size:13px; margin-bottom:12px; }
+    /* Ficha */
+    .ficha-grid { display:grid; grid-template-columns:200px 1fr; gap:0; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .ficha-grid .k { background:#fafafa; color:var(--gris); padding:11px 14px; font-size:12px; text-transform:uppercase; border-bottom:1px solid var(--linea); font-weight:600; }
+    .ficha-grid .val { padding:11px 14px; border-bottom:1px solid var(--linea); font-size:15px; }
+    .ficha-grid .val a { color:var(--azul); }
+    h1 { font-size:22px; margin:0 0 4px; }
+    .volver { color:var(--gris); text-decoration:none; font-size:14px; }
+    .vacio-val { color:#bbb; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">CRM Bragi</a><span class="sub">outreach de shows — Dani &amp; Davikane</span>
+  </header>
+  <div class="contenedor">
+    {% block contenido %}{% endblock %}
+  </div>
+</body>
+</html>

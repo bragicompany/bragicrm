@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Venues — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <form class="filtros" method="get" action="/">
+    <div>
+      <label>Ciudad</label>
+      <select name="ciudad">
+        <option value="">Todas</option>
+        {% for c in filtros.ciudades %}
+          <option value="{{ c }}" {% if seleccion.ciudad == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Artista</label>
+      <select name="artista">
+        <option value="">Todos</option>
+        {% for a in filtros.artistas %}
+          <option value="{{ a }}" {% if seleccion.artista == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Categoria</label>
+      <select name="categoria">
+        <option value="">Todas</option>
+        {% for c in filtros.categorias %}
+          <option value="{{ c }}" {% if seleccion.categoria == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Estado (pipeline)</label>
+      <select name="estado_pipeline">
+        <option value="">Todos</option>
+        {% for e in filtros.estados_pipeline %}
+          <option value="{{ e }}" {% if seleccion.estado_pipeline == e %}selected{% endif %}>{{ e }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">Filtrar</button>
+    <a class="btn gris" href="/">Limpiar</a>
+  </form>
+
+  <div class="conteo">{{ venues|length }} venue(s)</div>
+
+  {% if venues %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Ciudad</th>
+          <th>Cat.</th>
+          <th>Artista</th>
+          <th>Telefono</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in venues %}
+          <tr>
+            <td><a class="fila" href="/venue/{{ v.id }}">{{ v.nombre }}</a></td>
+            <td>{{ v.ciudad or "—" }}{% if v.estado %}, {{ v.estado }}{% endif %}</td>
+            <td>{% if v.categoria %}<span class="chip cat-{{ v.categoria }}">{{ v.categoria }}</span>{% else %}—{% endif %}</td>
+            <td>{{ v.artista or "—" }}</td>
+            <td>{{ v.telefono or "—" }}</td>
+            <td><span class="chip estado">{{ v.estado_pipeline or "nuevo" }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="vacio">
+      <p>Todavia no hay venues que coincidan.</p>
+      <p style="font-size:13px">Corre el buscador en la terminal, por ejemplo:<br>
+      <code>python3 places_search.py --query "salas de conciertos en Pharr, TX" --artista Davikane --categoria A --ciudad Pharr --estado TX</code></p>
+    </div>
+  {% endif %}
+
+{% endblock %}
