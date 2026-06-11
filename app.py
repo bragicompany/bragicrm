@@ -9,11 +9,34 @@ Para arrancar:   python3 app.py
 Luego abre:      http://localhost:5000
 """
 
+from urllib.parse import quote_plus
+
 from flask import Flask, render_template, request, abort
 
 import database
 
 app = Flask(__name__)
+
+
+@app.context_processor
+def utilidades():
+    """Funciones disponibles en las plantillas."""
+
+    def enlace_google(place_id, nombre=""):
+        """Arma el enlace directo a la ficha del lugar en Google Maps / My Business.
+
+        Usa el formato oficial de Google (Maps URLs API) a partir del place_id
+        que ya guardamos, asi que no hace falta pedir nada extra a la API.
+        """
+        if not place_id:
+            return None
+        return (
+            "https://www.google.com/maps/search/?api=1"
+            "&query=" + quote_plus(nombre or "venue")
+            + "&query_place_id=" + place_id
+        )
+
+    return dict(enlace_google=enlace_google)
 
 
 @app.route("/")

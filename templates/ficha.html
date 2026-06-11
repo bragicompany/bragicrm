@@ -21,6 +21,14 @@
     {{ fila("Direccion", v.direccion) }}
     {{ fila("Telefono", v.telefono) }}
 
+    <div class="k">Ficha en Google</div>
+    <div class="val">
+      {% set g = enlace_google(v.place_id, v.nombre) %}
+      {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google Maps / My Business ↗</a>
+      <div style="font-size:12px;color:#6b7280;margin-top:3px">Para revisar reseñas, fotos y confirmar si el teléfono es de un contacto real.</div>
+      {% else %}<span class="vacio-val">— (sin id de Google)</span>{% endif %}
+    </div>
+
     <div class="k">Sitio web</div>
     <div class="val">{% if v.web %}<a href="{{ v.web }}" target="_blank" rel="noopener">{{ v.web }}</a>{% else %}<span class="vacio-val">— (vacio)</span>{% endif %}</div>
 

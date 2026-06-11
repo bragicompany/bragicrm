@@ -54,6 +54,7 @@
           <th>Cat.</th>
           <th>Artista</th>
           <th>Telefono</th>
+          <th>Google</th>
           <th>Estado</th>
         </tr>
       </thead>
@@ -65,6 +66,10 @@
             <td>{% if v.categoria %}<span class="chip cat-{{ v.categoria }}">{{ v.categoria }}</span>{% else %}—{% endif %}</td>
             <td>{{ v.artista or "—" }}</td>
             <td>{{ v.telefono or "—" }}</td>
+            <td>
+              {% set g = enlace_google(v.place_id, v.nombre) %}
+              {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google ↗</a>{% else %}—{% endif %}
+            </td>
             <td><span class="chip estado">{{ v.estado_pipeline or "nuevo" }}</span></td>
           </tr>
         {% endfor %}
