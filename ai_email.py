@@ -92,8 +92,8 @@ def generar_borrador(venue, indice_gancho=0):
             "(la obtienes en console.anthropic.com)."
         )
 
-    artista = venue.get("artista") if hasattr(venue, "get") else venue["artista"]
-    perfil = artistas.obtener(artista)
+    venue = dict(venue)  # acepta tanto filas de SQLite como diccionarios
+    perfil = artistas.obtener(venue.get("artista"))
     if not perfil:
         raise ValueError(f"No hay perfil para el artista '{artista}' en artistas.py")
 
