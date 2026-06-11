@@ -9,6 +9,8 @@ Para arrancar:   python3 app.py
 Luego abre:      http://localhost:5000
 """
 
+import re
+from datetime import date
 from urllib.parse import quote_plus
 
 from flask import Flask, render_template, request, abort, redirect, url_for
@@ -36,7 +38,32 @@ def utilidades():
             + "&query_place_id=" + place_id
         )
 
-    return dict(enlace_google=enlace_google)
+    def _solo_digitos_intl(telefono):
+        """Convierte un telefono a digitos con codigo de pais. USA por defecto (+1
+        si son 10 digitos). Cuando entremos a Mexico se ajusta el +52."""
+        if not telefono:
+            return None
+        digitos = re.sub(r"\D", "", telefono)
+        if len(digitos) == 10:  # numero local de USA -> anteponer 1
+            digitos = "1" + digitos
+        return digitos or None
+
+    def enlace_whatsapp(telefono):
+        """Enlace wa.me para abrir el chat (tu escribes; la app no envia nada)."""
+        d = _solo_digitos_intl(telefono)
+        return "https://wa.me/" + d if d else None
+
+    def enlace_llamada(telefono):
+        """Enlace tel: para marcar desde el telefono/Mac."""
+        d = _solo_digitos_intl(telefono)
+        return "tel:+" + d if d else None
+
+    return dict(
+        enlace_google=enlace_google,
+        enlace_whatsapp=enlace_whatsapp,
+        enlace_llamada=enlace_llamada,
+        hoy=date.today().isoformat(),
+    )
 
 
 @app.route("/")
@@ -77,7 +104,8 @@ def ficha(venue_id):
     if venue is None:
         abort(404)
     guardado = request.args.get("guardado")  # mensaje "cambios guardados"
-    return render_template("ficha.html", v=venue, guardado=guardado)
+    actividades = database.listar_actividades(venue_id)
+    return render_template("ficha.html", v=venue, guardado=guardado, actividades=actividades)
 
 
 # Campos que el formulario de la ficha puede editar.
@@ -110,6 +138,35 @@ def decidir(venue_id):
     if nuevo_estado:
         database.actualizar_venue(venue_id, {"estado_pipeline": nuevo_estado})
     return redirect(url_for("ficha", venue_id=venue_id))
+
+
+@app.route("/venue/<int:venue_id>/actividad", methods=["POST"])
+def registrar_actividad(venue_id):
+    if database.obtener_venue(venue_id) is None:
+        abort(404)
+    database.agregar_actividad(
+        venue_id=venue_id,
+        canal=request.form.get("canal"),
+        fecha=request.form.get("fecha") or None,
+        resumen=request.form.get("resumen") or None,
+        resultado=request.form.get("resultado") or None,
+        siguiente_paso=request.form.get("siguiente_paso") or None,
+    )
+    return redirect(url_for("ficha", venue_id=venue_id) + "#actividades")
+
+
+@app.route("/actividad/<int:actividad_id>/borrar", methods=["POST"])
+def borrar_actividad(actividad_id):
+    venue_id = database.eliminar_actividad(actividad_id)
+    if venue_id is None:
+        return redirect(url_for("lista"))
+    return redirect(url_for("ficha", venue_id=venue_id) + "#actividades")
+
+
+@app.route("/agenda")
+def agenda():
+    recordatorios = database.listar_recordatorios()
+    return render_template("agenda.html", recordatorios=recordatorios)
 
 
 if __name__ == "__main__":

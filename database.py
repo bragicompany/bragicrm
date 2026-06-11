@@ -65,6 +65,22 @@ def crear_base():
         )
         """
     )
+    # Tabla de actividades (linea de tiempo): un venue tiene muchas actividades.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS actividades (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            venue_id       INTEGER NOT NULL,
+            canal          TEXT,   -- llamada / whatsapp / reunion / correo / nota
+            fecha          TEXT,   -- cuando paso (YYYY-MM-DD)
+            resumen        TEXT,   -- que se dijo / que paso
+            resultado      TEXT,   -- como resulto
+            siguiente_paso TEXT,
+            created_at     TEXT,
+            FOREIGN KEY (venue_id) REFERENCES venues(id)
+        )
+        """
+    )
     conn.commit()
     conn.close()
     print(f"Base de datos lista: {DB_FILE}")
@@ -213,6 +229,65 @@ def valores_distintos(columna):
     ).fetchall()
     conn.close()
     return [f[0] for f in filas]
+
+
+# ---------------------------------------------------------------------------
+# Actividades (linea de tiempo) y recordatorios (Fase 3)
+# ---------------------------------------------------------------------------
+
+CANALES_VALIDOS = {"llamada", "whatsapp", "reunion", "correo", "nota"}
+
+
+def agregar_actividad(venue_id, canal, fecha=None, resumen=None, resultado=None, siguiente_paso=None):
+    """Registra una actividad en la linea de tiempo de un venue."""
+    if canal not in CANALES_VALIDOS:
+        canal = "nota"
+    if not fecha:
+        fecha = datetime.now().strftime("%Y-%m-%d")
+    conn = conectar()
+    conn.execute(
+        """INSERT INTO actividades (venue_id, canal, fecha, resumen, resultado, siguiente_paso, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (venue_id, canal, fecha, resumen, resultado, siguiente_paso,
+         datetime.now().isoformat(timespec="seconds")),
+    )
+    conn.commit()
+    conn.close()
+
+
+def listar_actividades(venue_id):
+    """Devuelve las actividades de un venue, de la mas reciente a la mas antigua."""
+    conn = conectar()
+    filas = conn.execute(
+        "SELECT * FROM actividades WHERE venue_id = ? ORDER BY fecha DESC, id DESC",
+        (venue_id,),
+    ).fetchall()
+    conn.close()
+    return filas
+
+
+def eliminar_actividad(actividad_id):
+    """Borra una actividad (si te equivocaste al registrarla). Devuelve su venue_id."""
+    conn = conectar()
+    fila = conn.execute("SELECT venue_id FROM actividades WHERE id = ?", (actividad_id,)).fetchone()
+    venue_id = fila["venue_id"] if fila else None
+    conn.execute("DELETE FROM actividades WHERE id = ?", (actividad_id,))
+    conn.commit()
+    conn.close()
+    return venue_id
+
+
+def listar_recordatorios():
+    """Venues con recordatorio pendiente, ordenados por fecha (los mas proximos primero).
+    Para la pagina Agenda."""
+    conn = conectar()
+    filas = conn.execute(
+        """SELECT * FROM venues
+           WHERE recordatorio_fecha IS NOT NULL AND recordatorio_fecha != ''
+           ORDER BY recordatorio_fecha ASC"""
+    ).fetchall()
+    conn.close()
+    return filas
 
 
 if __name__ == "__main__":

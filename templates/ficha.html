@@ -10,6 +10,16 @@
     {% if v.enriquecido_el %}<span class="chip estado" style="background:#e6f7ee;color:#0a7d40">enriquecido</span>{% endif %}
   </div>
 
+  <!-- Contacto rapido: la app te da el enlace; tu marcas/escribes -->
+  <div class="acciones-rapidas">
+    {% set tel = enlace_llamada(v.telefono) %}
+    {% set wa = enlace_whatsapp(v.telefono) %}
+    {% if tel %}<a class="btn gris" href="{{ tel }}">📞 Llamar {{ v.telefono }}</a>{% endif %}
+    {% if wa %}<a class="btn gris" href="{{ wa }}" target="_blank" rel="noopener">💬 WhatsApp</a>{% endif %}
+    {% if v.email %}<a class="btn gris" href="mailto:{{ v.email.split(',')[0].strip() }}">✉️ Email</a>{% endif %}
+    {% if not tel and not wa and not v.email %}<span style="color:#9ca3af;font-size:14px">Sin teléfono ni correo — revisa la ficha de Google.</span>{% endif %}
+  </div>
+
   {% if guardado %}<div class="aviso-ok">✓ Cambios guardados.</div>{% endif %}
 
   <!-- APROBACION #1: decidir si el venue sirve -->
@@ -87,5 +97,58 @@
     </div>
     <button class="btn" type="submit" style="margin-top:14px">Guardar cambios</button>
   </form>
+
+  <!-- LINEA DE TIEMPO: historial de contacto del venue -->
+  <div id="actividades" style="margin-top:28px">
+    <h2 style="font-size:18px;margin-bottom:4px">Línea de tiempo</h2>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:14px">
+      Registra aquí cada llamada, WhatsApp, reunión o nota. La app no marca ni escribe por ti — tú lo haces y anotas cómo te fue.
+    </div>
+
+    <!-- Registrar una actividad -->
+    <form method="post" action="{{ url_for('registrar_actividad', venue_id=v.id) }}" class="form-actividad">
+      <div class="fila-act">
+        <label>Canal
+          <select name="canal">
+            <option value="llamada">📞 Llamada</option>
+            <option value="whatsapp">💬 WhatsApp</option>
+            <option value="reunion">🤝 Reunión / visita</option>
+            <option value="correo">✉️ Correo</option>
+            <option value="nota">📝 Nota</option>
+          </select>
+        </label>
+        <label>Fecha <input type="date" name="fecha" value="{{ hoy }}"></label>
+      </div>
+      <label class="ancho">Qué se dijo / qué pasó <textarea name="resumen" rows="2"></textarea></label>
+      <div class="fila-act">
+        <label>Resultado <input type="text" name="resultado" placeholder="ej. interesado, no contestó..."></label>
+        <label>Siguiente paso <input type="text" name="siguiente_paso" placeholder="ej. volver a llamar el viernes"></label>
+      </div>
+      <button class="btn" type="submit" style="margin-top:10px">Registrar actividad</button>
+    </form>
+
+    <!-- Historial -->
+    {% if actividades %}
+      <div class="timeline">
+        {% for a in actividades %}
+          <div class="evento">
+            <div class="evento-cab">
+              <span class="chip canal-{{ a.canal }}">{{ a.canal }}</span>
+              <span class="evento-fecha">{{ a.fecha }}</span>
+              <form method="post" action="{{ url_for('borrar_actividad', actividad_id=a.id) }}"
+                    onsubmit="return confirm('¿Borrar esta actividad?')" style="margin-left:auto">
+                <button class="link-borrar" type="submit" title="Borrar">✕</button>
+              </form>
+            </div>
+            {% if a.resumen %}<div class="evento-txt">{{ a.resumen }}</div>{% endif %}
+            {% if a.resultado %}<div class="evento-meta"><strong>Resultado:</strong> {{ a.resultado }}</div>{% endif %}
+            {% if a.siguiente_paso %}<div class="evento-meta"><strong>Siguiente paso:</strong> {{ a.siguiente_paso }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="color:#9ca3af;font-size:14px;margin-top:12px">Todavía no hay actividades registradas.</div>
+    {% endif %}
+  </div>
 
 {% endblock %}

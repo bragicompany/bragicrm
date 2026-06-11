@@ -38,6 +38,30 @@
         margin-top:5px; padding:8px 10px; border:1px solid var(--linea); border-radius:6px; font-size:14px;
         font-weight:400; text-transform:none; letter-spacing:normal; color:#111; font-family:inherit; }
     .form-grid textarea { resize:vertical; }
+    /* Contacto rapido */
+    .acciones-rapidas { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    /* Linea de tiempo */
+    .form-actividad { background:#fff; padding:16px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:18px; }
+    .form-actividad label { display:flex; flex-direction:column; font-size:12px; color:var(--gris); font-weight:600; text-transform:uppercase; margin-bottom:10px; }
+    .form-actividad label.ancho { width:100%; }
+    .form-actividad input, .form-actividad select, .form-actividad textarea {
+        margin-top:5px; padding:8px 10px; border:1px solid var(--linea); border-radius:6px; font-size:14px;
+        font-weight:400; text-transform:none; color:#111; font-family:inherit; }
+    .form-actividad .fila-act { display:flex; gap:16px; }
+    .form-actividad .fila-act label { flex:1; }
+    .timeline { display:flex; flex-direction:column; gap:10px; }
+    .evento { background:#fff; border:1px solid var(--linea); border-left:3px solid var(--azul); border-radius:8px; padding:12px 14px; }
+    .evento-cab { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .evento-fecha { color:var(--gris); font-size:13px; }
+    .evento-txt { font-size:14px; margin-bottom:4px; }
+    .evento-meta { font-size:13px; color:#374151; }
+    .link-borrar { background:none; border:none; color:#bbb; cursor:pointer; font-size:14px; }
+    .link-borrar:hover { color:#b91c1c; }
+    .chip.canal-llamada { background:#e6f0ff; color:#1d4ed8; }
+    .chip.canal-whatsapp { background:#e6f7ee; color:#0a7d40; }
+    .chip.canal-reunion { background:#fef3c7; color:#92400e; }
+    .chip.canal-correo { background:#ede9fe; color:#6d28d9; }
+    .chip.canal-nota { background:#eef2f7; color:#374151; }
     .filtros { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px; }
     .filtros label { display:block; font-size:11px; color:var(--gris); margin-bottom:3px; text-transform:uppercase; }
     .filtros select { padding:7px 10px; border:1px solid var(--linea); border-radius:6px; background:#fff; font-size:14px; }
@@ -56,8 +80,10 @@
   </style>
 </head>
 <body>
-  <header>
-    <a href="/">CRM Bragi</a><span class="sub">outreach de shows — Dani &amp; Davikane</span>
+  <header style="display:flex;align-items:center;gap:16px">
+    <a href="/">CRM Bragi</a>
+    <a href="/agenda" style="font-size:14px;font-weight:400">Agenda</a>
+    <span class="sub">outreach de shows — Dani &amp; Davikane</span>
   </header>
   <div class="contenedor">
     {% block contenido %}{% endblock %}

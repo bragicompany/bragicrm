@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Agenda — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <h1 style="font-size:22px;margin-bottom:4px">Agenda</h1>
+  <div class="conteo">Venues con recordatorio, ordenados por fecha (lo más próximo primero).</div>
+
+  {% if recordatorios %}
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Venue</th>
+          <th>Ciudad</th>
+          <th>Próxima acción</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in recordatorios %}
+          <tr>
+            <td><strong>{{ v.recordatorio_fecha }}</strong></td>
+            <td><a class="fila" href="/venue/{{ v.id }}">{{ v.nombre }}</a></td>
+            <td>{{ v.ciudad or "—" }}</td>
+            <td>{{ v.proxima_accion or "—" }}</td>
+            <td><span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="vacio">
+      <p>No hay recordatorios pendientes.</p>
+      <p style="font-size:13px">Para agendar uno: entra a la ficha de un venue y llena
+      <em>Próxima acción</em> + <em>Recordatorio</em> (fecha), y guarda.</p>
+    </div>
+  {% endif %}
+
+{% endblock %}
