@@ -5,7 +5,7 @@
   <form class="filtros" method="get" action="/">
     <div>
       <label>Ciudad</label>
-      <select name="ciudad">
+      <select name="ciudad" onchange="this.form.submit()">
         <option value="">Todas</option>
         {% for c in filtros.ciudades %}
           <option value="{{ c }}" {% if seleccion.ciudad == c %}selected{% endif %}>{{ c }}</option>
@@ -14,7 +14,7 @@
     </div>
     <div>
       <label>Artista</label>
-      <select name="artista">
+      <select name="artista" onchange="this.form.submit()">
         <option value="">Todos</option>
         {% for a in filtros.artistas %}
           <option value="{{ a }}" {% if seleccion.artista == a %}selected{% endif %}>{{ a }}</option>
@@ -23,7 +23,7 @@
     </div>
     <div>
       <label>Categoria</label>
-      <select name="categoria">
+      <select name="categoria" onchange="this.form.submit()">
         <option value="">Todas</option>
         {% for c in filtros.categorias %}
           <option value="{{ c }}" {% if seleccion.categoria == c %}selected{% endif %}>{{ c }}</option>
@@ -32,7 +32,7 @@
     </div>
     <div>
       <label>Estado (pipeline)</label>
-      <select name="estado_pipeline">
+      <select name="estado_pipeline" onchange="this.form.submit()">
         <option value="">Todos</option>
         {% for e in filtros.estados_pipeline %}
           <option value="{{ e }}" {% if seleccion.estado_pipeline == e %}selected{% endif %}>{{ e }}</option>
