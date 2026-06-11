@@ -70,7 +70,7 @@
               {% set g = enlace_google(v.place_id, v.nombre) %}
               {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google ↗</a>{% else %}—{% endif %}
             </td>
-            <td><span class="chip estado">{{ v.estado_pipeline or "nuevo" }}</span></td>
+            <td><span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span></td>
           </tr>
         {% endfor %}
       </tbody>

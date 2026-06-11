@@ -70,6 +70,68 @@ def crear_base():
     print(f"Base de datos lista: {DB_FILE}")
 
 
+def _columnas_existentes():
+    """Devuelve la lista de columnas que tiene hoy la tabla venues."""
+    conn = conectar()
+    filas = conn.execute("PRAGMA table_info(venues)").fetchall()
+    conn.close()
+    return [f["name"] for f in filas]
+
+
+def migrar():
+    """Aplica cambios de estructura SIN borrar datos (solo agrega columnas que falten).
+
+    ALTER TABLE ADD COLUMN nunca destruye filas: los venues viejos quedan con el
+    campo nuevo vacio. Es seguro correrlo muchas veces.
+    """
+    existentes = _columnas_existentes()
+    # (columna, definicion) — agregar aqui futuras columnas nuevas.
+    nuevas = [
+        ("enriquecido_el", "TEXT"),  # cuando se enriquecio (None = aun no)
+    ]
+    conn = conectar()
+    aplicadas = []
+    for nombre, definicion in nuevas:
+        if nombre not in existentes:
+            conn.execute(f"ALTER TABLE venues ADD COLUMN {nombre} {definicion}")
+            aplicadas.append(nombre)
+    conn.commit()
+    conn.close()
+    if aplicadas:
+        print(f"Migracion: columnas agregadas -> {', '.join(aplicadas)}")
+    else:
+        print("Migracion: nada que aplicar (la base ya esta al dia).")
+    return aplicadas
+
+
+# Columnas que el usuario puede editar desde la ficha (lista blanca de seguridad).
+COLUMNAS_EDITABLES = {
+    "categoria", "artista", "ciudad", "estado", "pais", "direccion", "telefono",
+    "web", "pagina_booking", "email", "redes", "encargado", "capacidad", "genero",
+    "mejor_canal", "estado_pipeline", "proxima_accion", "recordatorio_fecha",
+    "notas", "enriquecido_el",
+}
+
+
+def actualizar_venue(venue_id, campos):
+    """Actualiza los campos indicados de un venue. Solo permite columnas de la lista blanca.
+
+    'campos' es un diccionario {columna: valor}. Devuelve el numero de filas afectadas.
+    """
+    seguros = {k: v for k, v in campos.items() if k in COLUMNAS_EDITABLES}
+    if not seguros:
+        return 0
+    seguros["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    asignaciones = ", ".join(f"{k} = ?" for k in seguros.keys())
+    valores = list(seguros.values()) + [venue_id]
+    conn = conectar()
+    cur = conn.execute(f"UPDATE venues SET {asignaciones} WHERE id = ?", valores)
+    conn.commit()
+    afectadas = cur.rowcount
+    conn.close()
+    return afectadas
+
+
 def respaldar():
     """Copia el archivo de la base a backups/ con la fecha y hora. 30 segundos de tranquilidad."""
     if not os.path.exists(DB_FILE):

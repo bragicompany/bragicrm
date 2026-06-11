@@ -11,7 +11,7 @@ Luego abre:      http://localhost:5000
 
 from urllib.parse import quote_plus
 
-from flask import Flask, render_template, request, abort
+from flask import Flask, render_template, request, abort, redirect, url_for
 
 import database
 
@@ -76,7 +76,40 @@ def ficha(venue_id):
     venue = database.obtener_venue(venue_id)
     if venue is None:
         abort(404)
-    return render_template("ficha.html", v=venue)
+    guardado = request.args.get("guardado")  # mensaje "cambios guardados"
+    return render_template("ficha.html", v=venue, guardado=guardado)
+
+
+# Campos que el formulario de la ficha puede editar.
+CAMPOS_FORM = [
+    "categoria", "artista", "ciudad", "estado", "direccion", "telefono", "web",
+    "pagina_booking", "email", "redes", "encargado", "capacidad", "genero",
+    "mejor_canal", "proxima_accion", "recordatorio_fecha", "notas",
+]
+
+
+@app.route("/venue/<int:venue_id>/guardar", methods=["POST"])
+def guardar(venue_id):
+    if database.obtener_venue(venue_id) is None:
+        abort(404)
+    # Solo tocar los campos que realmente vienen en el formulario (evita borrar datos
+    # si llega un envio parcial). Un campo vacio si limpia ese campo (a None).
+    cambios = {c: (request.form.get(c) or None) for c in CAMPOS_FORM if c in request.form}
+    database.actualizar_venue(venue_id, cambios)
+    return redirect(url_for("ficha", venue_id=venue_id, guardado="1"))
+
+
+@app.route("/venue/<int:venue_id>/decidir", methods=["POST"])
+def decidir(venue_id):
+    if database.obtener_venue(venue_id) is None:
+        abort(404)
+    accion = request.form.get("accion")
+    # Aprobacion #1: calificar (sirve), descartar (no sirve), o reabrir (volver a 'nuevo').
+    mapa = {"calificar": "calificado", "descartar": "descartado", "reabrir": "nuevo"}
+    nuevo_estado = mapa.get(accion)
+    if nuevo_estado:
+        database.actualizar_venue(venue_id, {"estado_pipeline": nuevo_estado})
+    return redirect(url_for("ficha", venue_id=venue_id))
 
 
 if __name__ == "__main__":

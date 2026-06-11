@@ -4,3 +4,4 @@
 Flask==3.0.3          # el servidor web (la lista y la ficha)
 requests==2.32.3      # para hablar con Google Places
 python-dotenv==1.0.1  # para leer las llaves del archivo .env
+beautifulsoup4==4.12.3 # para leer el HTML de las webs de los venues (Fase 2)

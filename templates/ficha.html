@@ -6,21 +6,29 @@
   <h1 style="margin-top:10px">{{ v.nombre }}</h1>
   <div style="margin-bottom:16px">
     {% if v.categoria %}<span class="chip cat-{{ v.categoria }}">Categoria {{ v.categoria }}</span>{% endif %}
-    <span class="chip estado">{{ v.estado_pipeline or "nuevo" }}</span>
+    <span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span>
+    {% if v.enriquecido_el %}<span class="chip estado" style="background:#e6f7ee;color:#0a7d40">enriquecido</span>{% endif %}
   </div>
 
-  {% macro fila(etiqueta, valor) %}
-    <div class="k">{{ etiqueta }}</div>
-    <div class="val">{% if valor %}{{ valor }}{% else %}<span class="vacio-val">— (vacio)</span>{% endif %}</div>
-  {% endmacro %}
+  {% if guardado %}<div class="aviso-ok">✓ Cambios guardados.</div>{% endif %}
 
-  <div class="ficha-grid">
-    {{ fila("Artista objetivo", v.artista) }}
-    {{ fila("Ciudad", v.ciudad) }}
-    {{ fila("Estado / pais", (v.estado ~ " " ~ v.pais) if (v.estado or v.pais) else "") }}
-    {{ fila("Direccion", v.direccion) }}
-    {{ fila("Telefono", v.telefono) }}
+  <!-- APROBACION #1: decidir si el venue sirve -->
+  <div class="panel-decision">
+    <div>
+      <strong>Aprobación #1 — ¿este venue sirve?</strong>
+      <div style="font-size:13px;color:#6b7280">Revisa los datos abajo (y la ficha en Google) antes de decidir.</div>
+    </div>
+    <form method="post" action="{{ url_for('decidir', venue_id=v.id) }}" style="display:flex;gap:8px">
+      <button class="btn verde" name="accion" value="calificar">✅ Califica</button>
+      <button class="btn rojo" name="accion" value="descartar">🗑️ Descartar</button>
+      {% if v.estado_pipeline in ('calificado', 'descartado') %}
+        <button class="btn gris" name="accion" value="reabrir">↩︎ Reabrir</button>
+      {% endif %}
+    </form>
+  </div>
 
+  <!-- Datos de solo lectura + enlaces -->
+  <div class="ficha-grid" style="margin-bottom:18px">
     <div class="k">Ficha en Google</div>
     <div class="val">
       {% set g = enlace_google(v.place_id, v.nombre) %}
@@ -28,25 +36,56 @@
       <div style="font-size:12px;color:#6b7280;margin-top:3px">Para revisar reseñas, fotos y confirmar si el teléfono es de un contacto real.</div>
       {% else %}<span class="vacio-val">— (sin id de Google)</span>{% endif %}
     </div>
-
-    <div class="k">Sitio web</div>
-    <div class="val">{% if v.web %}<a href="{{ v.web }}" target="_blank" rel="noopener">{{ v.web }}</a>{% else %}<span class="vacio-val">— (vacio)</span>{% endif %}</div>
-
-    <div class="k">Pagina de booking</div>
-    <div class="val">{% if v.pagina_booking %}<a href="{{ v.pagina_booking }}" target="_blank" rel="noopener">{{ v.pagina_booking }}</a>{% else %}<span class="vacio-val">— (se llena en Fase 2)</span>{% endif %}</div>
-
-    {{ fila("Email de booking", v.email) }}
-    {{ fila("Redes", v.redes) }}
-    {{ fila("Encargado / booker", v.encargado) }}
-    {{ fila("Capacidad aprox.", v.capacidad) }}
-    {{ fila("Genero que programa", v.genero) }}
-    {{ fila("Mejor canal", v.mejor_canal) }}
-    {{ fila("Rating (Google)", v.rating) }}
-    {{ fila("Proxima accion", v.proxima_accion) }}
-    {{ fila("Recordatorio", v.recordatorio_fecha) }}
-    {{ fila("Notas", v.notas) }}
-    {{ fila("Fuente", v.fuente) }}
-    {{ fila("Guardado el", v.created_at) }}
+    <div class="k">Rating (Google)</div>
+    <div class="val">{% if v.rating %}{{ v.rating }}{% else %}<span class="vacio-val">—</span>{% endif %}</div>
+    <div class="k">Enriquecido el</div>
+    <div class="val">{% if v.enriquecido_el %}{{ v.enriquecido_el }}{% else %}<span class="vacio-val">— (aún no)</span>{% endif %}</div>
+    <div class="k">Guardado el</div>
+    <div class="val">{{ v.created_at }}</div>
   </div>
+
+  <!-- Formulario editable -->
+  <form method="post" action="{{ url_for('guardar', venue_id=v.id) }}">
+    <div class="form-grid">
+      <label>Categoría
+        <select name="categoria">
+          <option value="">—</option>
+          <option value="A" {% if v.categoria=='A' %}selected{% endif %}>A — venue directo</option>
+          <option value="B" {% if v.categoria=='B' %}selected{% endif %}>B — intermediario/promotor</option>
+        </select>
+      </label>
+      <label>Artista objetivo
+        <select name="artista">
+          <option value="">—</option>
+          <option value="Dani" {% if v.artista=='Dani' %}selected{% endif %}>Dani</option>
+          <option value="Davikane" {% if v.artista=='Davikane' %}selected{% endif %}>Davikane</option>
+        </select>
+      </label>
+      <label>Ciudad <input type="text" name="ciudad" value="{{ v.ciudad or '' }}"></label>
+      <label>Estado <input type="text" name="estado" value="{{ v.estado or '' }}"></label>
+      <label class="ancho">Dirección <input type="text" name="direccion" value="{{ v.direccion or '' }}"></label>
+      <label>Teléfono <input type="text" name="telefono" value="{{ v.telefono or '' }}"></label>
+      <label>Mejor canal
+        <select name="mejor_canal">
+          {% set mc = v.mejor_canal or '' %}
+          <option value="" {% if mc=='' %}selected{% endif %}>—</option>
+          <option value="correo" {% if mc=='correo' %}selected{% endif %}>correo</option>
+          <option value="llamada" {% if mc=='llamada' %}selected{% endif %}>llamada</option>
+          <option value="whatsapp" {% if mc=='whatsapp' %}selected{% endif %}>whatsapp</option>
+        </select>
+      </label>
+      <label class="ancho">Sitio web <input type="text" name="web" value="{{ v.web or '' }}"></label>
+      <label class="ancho">Página de booking/contacto <input type="text" name="pagina_booking" value="{{ v.pagina_booking or '' }}"></label>
+      <label class="ancho">Email de booking <input type="text" name="email" value="{{ v.email or '' }}"></label>
+      <label class="ancho">Redes (links, revisión manual) <input type="text" name="redes" value="{{ v.redes or '' }}"></label>
+      <label>Encargado / booker <input type="text" name="encargado" value="{{ v.encargado or '' }}"></label>
+      <label>Capacidad aprox. <input type="text" name="capacidad" value="{{ v.capacidad or '' }}"></label>
+      <label>Género que programa <input type="text" name="genero" value="{{ v.genero or '' }}"></label>
+      <label>Próxima acción <input type="text" name="proxima_accion" value="{{ v.proxima_accion or '' }}"></label>
+      <label>Recordatorio <input type="date" name="recordatorio_fecha" value="{{ v.recordatorio_fecha or '' }}"></label>
+      <label class="ancho">Notas <textarea name="notas" rows="3">{{ v.notas or '' }}</textarea></label>
+    </div>
+    <button class="btn" type="submit" style="margin-top:14px">Guardar cambios</button>
+  </form>
 
 {% endblock %}
