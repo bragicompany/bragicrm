@@ -106,8 +106,14 @@
       Puedes generar con distintos ganchos y compararlos.
     </div>
 
-    {% if correo_ok %}<div class="aviso-ok">✓ Borrador generado. Revísalo abajo.</div>{% endif %}
+    {% if correo_ok %}<div class="aviso-ok">✓ {% if correo_ok != '1' %}{{ correo_ok }} borradores generados{% else %}Borrador generado{% endif %}. Revísalos abajo.</div>{% endif %}
     {% if correo_error %}<div class="aviso-error">⚠ {{ correo_error }}</div>{% endif %}
+    {% if v.artista and perfil_incompleto %}
+      <div class="aviso-error" style="background:#fff7ed;color:#b45309">
+        ⚠ El perfil de <strong>{{ v.artista }}</strong> aún tiene campos sin llenar en <code>artistas.py</code> (bio/links).
+        El correo saldrá genérico — complétalo para mejores resultados.
+      </div>
+    {% endif %}
 
     <!-- Generar un borrador -->
     <form method="post" action="{{ url_for('generar_correo', venue_id=v.id) }}" class="form-actividad">
@@ -119,8 +125,16 @@
             {% endfor %}
           </select>
         </label>
-        <button class="btn" type="submit">✍️ Generar borrador con IA</button>
-        <span style="font-size:12px;color:#9ca3af;margin-left:8px">Artista: {{ v.artista }} · cuesta fracciones de centavo</span>
+        <label class="ancho">Instrucción opcional (cómo quieres el correo)
+          <input type="text" name="instruccion" placeholder="ej. más corto · más formal · menciona disponibilidad en julio">
+        </label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn" type="submit">✍️ Generar 1 borrador</button>
+          <button class="btn gris" type="submit" formaction="{{ url_for('generar_variantes', venue_id=v.id) }}">
+            Generar 1 por cada gancho ({{ ganchos|length }})
+          </button>
+          <span style="font-size:12px;color:#9ca3af">Artista: {{ v.artista }} · fracciones de centavo c/u</span>
+        </div>
       {% else %}
         <div style="color:#b45309;font-size:14px">Asigna un <strong>artista</strong> a este venue (arriba) para poder generar el correo.</div>
       {% endif %}
@@ -138,14 +152,15 @@
             </div>
             <form method="post" action="{{ url_for('guardar_mensaje', mensaje_id=m.id) }}">
               <label class="lbl-correo">Asunto
-                <input type="text" name="asunto" value="{{ m.asunto or '' }}">
+                <input type="text" id="asunto_{{ m.id }}" name="asunto" value="{{ m.asunto or '' }}">
               </label>
               <label class="lbl-correo">Cuerpo
-                <textarea name="cuerpo" rows="8">{{ m.cuerpo or '' }}</textarea>
+                <textarea id="cuerpo_{{ m.id }}" name="cuerpo" rows="8">{{ m.cuerpo or '' }}</textarea>
               </label>
               <button class="btn gris" type="submit">Guardar cambios</button>
             </form>
-            <div style="display:flex;gap:8px;margin-top:10px">
+            {% set destino = (v.email.split(',')[0].strip()) if v.email else '' %}
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
               <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
                 {% if m.estado != 'aprobado' %}
                   <button class="btn verde" name="accion" value="aprobar">✅ Aprobar</button>
@@ -153,6 +168,10 @@
                   <button class="btn gris" name="accion" value="reabrir">↩︎ Volver a borrador</button>
                 {% endif %}
               </form>
+              <button type="button" class="btn gris" onclick="copiarCorreo({{ m.id }})">📋 Copiar</button>
+              {% if destino %}
+                <a class="btn gris" href="mailto:{{ destino|urlencode }}?subject={{ (m.asunto or '')|urlencode }}&body={{ (m.cuerpo or '')|urlencode }}">✉️ Abrir en tu correo</a>
+              {% endif %}
               <form method="post" action="{{ url_for('borrar_mensaje', mensaje_id=m.id) }}"
                     onsubmit="return confirm('¿Borrar este borrador?')">
                 <button class="btn rojo" type="submit">🗑️ Borrar</button>
@@ -218,5 +237,19 @@
       <div style="color:#9ca3af;font-size:14px;margin-top:12px">Todavía no hay actividades registradas.</div>
     {% endif %}
   </div>
+
+  <script>
+    // Copia el asunto + cuerpo (lo que esté escrito ahora) al portapapeles.
+    function copiarCorreo(id) {
+      var asunto = document.getElementById('asunto_' + id).value;
+      var cuerpo = document.getElementById('cuerpo_' + id).value;
+      var texto = 'Asunto: ' + asunto + '\n\n' + cuerpo;
+      navigator.clipboard.writeText(texto).then(function () {
+        alert('Correo copiado. Pégalo en tu correo (Cmd+V).');
+      }, function () {
+        alert('No se pudo copiar automáticamente. Selecciona el texto a mano.');
+      });
+    }
+  </script>
 
 {% endblock %}

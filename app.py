@@ -110,6 +110,11 @@ def ficha(venue_id):
     mensajes = database.listar_mensajes(venue_id)
     perfil = artistas.obtener(venue["artista"]) if venue["artista"] else None
     ganchos = perfil.get("ganchos", []) if perfil else []
+    # ¿El perfil del artista todavía tiene placeholders [..] sin llenar?
+    perfil_incompleto = False
+    if perfil:
+        texto_perfil = perfil.get("bio", "") + " ".join(perfil.get("links", []))
+        perfil_incompleto = "[" in texto_perfil
     return render_template(
         "ficha.html",
         v=venue,
@@ -117,6 +122,7 @@ def ficha(venue_id):
         actividades=actividades,
         mensajes=mensajes,
         ganchos=ganchos,
+        perfil_incompleto=perfil_incompleto,
         correo_ok=request.args.get("correo_ok"),
         correo_error=request.args.get("correo_error"),
     )
@@ -192,8 +198,9 @@ def generar_correo(venue_id):
         indice = int(request.form.get("gancho", 0))
     except (TypeError, ValueError):
         indice = 0
+    instruccion = request.form.get("instruccion") or None
     try:
-        borrador = ai_email.generar_borrador(venue, indice_gancho=indice)
+        borrador = ai_email.generar_borrador(venue, indice_gancho=indice, instruccion=instruccion)
         database.agregar_mensaje(
             venue_id=venue_id,
             asunto=borrador["asunto"],
@@ -202,10 +209,45 @@ def generar_correo(venue_id):
             modelo=borrador["modelo"],
         )
         destino = url_for("ficha", venue_id=venue_id, correo_ok="1")
-    except ai_email.FaltaLlaveError as e:
+    except (ai_email.FaltaLlaveError, ai_email.GeneracionError) as e:
         destino = url_for("ficha", venue_id=venue_id, correo_error=str(e))
-    except Exception as e:  # error de la API u otro — mostrarlo en lenguaje simple
+    except Exception as e:  # imprevisto — mostrarlo en lenguaje simple
         destino = url_for("ficha", venue_id=venue_id, correo_error=f"No se pudo generar: {e}")
+    return redirect(destino + "#correos")
+
+
+@app.route("/venue/<int:venue_id>/generar-variantes", methods=["POST"])
+def generar_variantes(venue_id):
+    venue = database.obtener_venue(venue_id)
+    if venue is None:
+        abort(404)
+    instruccion = request.form.get("instruccion") or None
+    perfil = artistas.obtener(venue["artista"]) if venue["artista"] else None
+    ganchos = perfil.get("ganchos", []) if perfil else []
+    if not ganchos:
+        destino = url_for("ficha", venue_id=venue_id,
+                          correo_error="No hay ganchos para este artista (revisa artistas.py).")
+        return redirect(destino + "#correos")
+
+    creados = 0
+    error = None
+    for i in range(len(ganchos)):
+        try:
+            b = ai_email.generar_borrador(venue, indice_gancho=i, instruccion=instruccion)
+            database.agregar_mensaje(
+                venue_id=venue_id, asunto=b["asunto"], cuerpo=b["cuerpo"],
+                gancho=b["gancho"], modelo=b["modelo"],
+            )
+            creados += 1
+        except (ai_email.FaltaLlaveError, ai_email.GeneracionError) as e:
+            error = str(e)
+            break  # si falla la llave/cuenta, no tiene sentido seguir
+
+    if creados:
+        destino = url_for("ficha", venue_id=venue_id, correo_ok=f"{creados}")
+    else:
+        destino = url_for("ficha", venue_id=venue_id,
+                          correo_error=error or "No se pudo generar ninguna variante.")
     return redirect(destino + "#correos")
 
 

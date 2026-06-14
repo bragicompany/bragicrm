@@ -21,6 +21,10 @@ class FaltaLlaveError(Exception):
     """Se lanza cuando no hay ANTHROPIC_API_KEY configurada."""
 
 
+class GeneracionError(Exception):
+    """Error al generar el correo, con un mensaje claro para mostrarle a Alejandro."""
+
+
 def _instrucciones():
     """El 'system prompt': quién es Claude aquí y las reglas del correo."""
     return (
@@ -58,32 +62,83 @@ def _extraer_json(texto):
     return json.loads(t)
 
 
-def _mensaje_usuario(venue, perfil, gancho):
+def _mensaje_usuario(venue, perfil, gancho, instruccion=None):
     """El prompt con los datos concretos de este venue y artista."""
     idioma = "español" if perfil.get("idioma_correo", "es") == "es" else "inglés"
     links = "\n".join(f"  - {l}" for l in perfil.get("links", [])) or "  (sin links)"
+
+    # Contexto extra del venue (si lo tenemos) para personalizar mejor.
+    extras = []
+    if venue.get("genero"):
+        extras.append(f"Género que programa: {venue['genero']}")
+    if venue.get("web"):
+        extras.append(f"Sitio web: {venue['web']}")
+    if venue.get("capacidad"):
+        extras.append(f"Capacidad aprox.: {venue['capacidad']}")
+    if venue.get("encargado"):
+        extras.append(f"Persona a cargo (booker): {venue['encargado']}")
+    if venue.get("notas"):
+        extras.append(f"Notas internas (úsalas como contexto, NO las cites textualmente): {venue['notas']}")
+    extras_txt = ("\n" + "\n".join(extras)) if extras else ""
+
+    instruccion_txt = (
+        f"\n=== INSTRUCCIÓN ADICIONAL DEL USUARIO (respétala) ===\n{instruccion}\n"
+        if instruccion else ""
+    )
+
     return (
         f"Escribe el correo en {idioma}.\n\n"
         f"=== VENUE ===\n"
         f"Nombre: {venue['nombre']}\n"
         f"Ciudad: {venue.get('ciudad') or 's/d'}, {venue.get('estado') or ''}\n"
-        f"Categoría: {'venue directo' if venue.get('categoria') == 'A' else 'promotor/intermediario' if venue.get('categoria') == 'B' else 's/d'}\n\n"
+        f"Categoría: {'venue directo' if venue.get('categoria') == 'A' else 'promotor/intermediario' if venue.get('categoria') == 'B' else 's/d'}"
+        f"{extras_txt}\n\n"
         f"=== ARTISTA ===\n"
         f"Nombre artístico: {perfil['nombre_artistico']}\n"
         f"Género: {perfil['genero']}\n"
         f"Región: {perfil['region']}\n"
         f"Bio: {perfil['bio']}\n"
         f"Links:\n{links}\n\n"
-        f"=== GANCHO (ángulo principal de este correo) ===\n{gancho}\n\n"
+        f"=== GANCHO (ángulo principal de este correo) ===\n{gancho}\n"
+        f"{instruccion_txt}\n"
         f"Tono deseado: {perfil['tono']}\n\n"
         f"Devuelve un asunto corto y atractivo, y el cuerpo del correo."
     )
 
 
-def generar_borrador(venue, indice_gancho=0):
+def _llamar_claude(system, user):
+    """Hace la llamada a Claude y devuelve el texto. Traduce errores tecnicos a
+    mensajes claros (GeneracionError)."""
+    import anthropic  # import local: la app funciona aunque no esté instalado
+
+    client = anthropic.Anthropic()
+    try:
+        resp = client.messages.create(
+            model=MODELO,
+            max_tokens=2000,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+    except anthropic.AuthenticationError:
+        raise GeneracionError("Tu llave de Anthropic no es válida. Revísala en el archivo .env.")
+    except anthropic.RateLimitError:
+        raise GeneracionError("Anthropic está limitando por ahora (muchas solicitudes). Espera ~1 minuto y reintenta.")
+    except anthropic.APIStatusError as e:
+        mensaje = (getattr(e, "message", "") or "").lower()
+        tipo = (getattr(e, "type", "") or "").lower()
+        if e.status_code == 403 or "billing" in tipo or "credit" in mensaje or "saldo" in mensaje:
+            raise GeneracionError("La cuenta de Anthropic parece no tener saldo o permiso. Revisa el saldo en console.anthropic.com.")
+        raise GeneracionError(f"La API de Anthropic devolvió un error ({e.status_code}). Intenta de nuevo en un momento.")
+    except anthropic.APIConnectionError:
+        raise GeneracionError("No hay conexión con Anthropic. Revisa tu internet y reintenta.")
+    return next((b.text for b in resp.content if b.type == "text"), "")
+
+
+def generar_borrador(venue, indice_gancho=0, instruccion=None):
     """
     Genera un borrador para un venue. 'venue' es una fila/dict con los datos.
     'indice_gancho' elige cuál de los ganchos del artista usar (para tests A/B).
+    'instruccion' es una orden libre opcional ('más corto', 'más formal'...).
     Devuelve un dict: {asunto, cuerpo, gancho, modelo}.
     """
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -95,27 +150,30 @@ def generar_borrador(venue, indice_gancho=0):
     venue = dict(venue)  # acepta tanto filas de SQLite como diccionarios
     perfil = artistas.obtener(venue.get("artista"))
     if not perfil:
-        raise ValueError(f"No hay perfil para el artista '{artista}' en artistas.py")
+        raise GeneracionError(
+            f"El venue no tiene un artista con perfil en artistas.py "
+            f"(artista: '{venue.get('artista')}'). Asígnale Dani o Davikane."
+        )
 
     ganchos = perfil.get("ganchos") or [""]
     indice_gancho = max(0, min(indice_gancho, len(ganchos) - 1))
     gancho = ganchos[indice_gancho]
 
-    # Import aquí para que el resto de la app funcione aunque 'anthropic' no esté instalado.
-    import anthropic
+    system = _instrucciones()
+    user = _mensaje_usuario(venue, perfil, gancho, instruccion)
 
-    client = anthropic.Anthropic()
-    respuesta = client.messages.create(
-        model=MODELO,
-        max_tokens=2000,
-        system=_instrucciones(),
-        messages=[{"role": "user", "content": _mensaje_usuario(venue, perfil, gancho)}],
-    )
-    texto = next((b.text for b in respuesta.content if b.type == "text"), "")
-    datos = _extraer_json(texto)
-    return {
-        "asunto": datos.get("asunto", "").strip(),
-        "cuerpo": datos.get("cuerpo", "").strip(),
-        "gancho": gancho,
-        "modelo": MODELO,
-    }
+    # Reintenta una vez si la IA no devolvió un JSON parseable.
+    for intento in range(2):
+        texto = _llamar_claude(system, user)
+        try:
+            datos = _extraer_json(texto)
+            return {
+                "asunto": (datos.get("asunto") or "").strip(),
+                "cuerpo": (datos.get("cuerpo") or "").strip(),
+                "gancho": gancho,
+                "modelo": MODELO,
+            }
+        except (json.JSONDecodeError, ValueError):
+            continue  # un reintento más
+
+    raise GeneracionError("La IA no devolvió el correo en el formato esperado. Vuelve a intentarlo.")
