@@ -68,15 +68,11 @@ def enviar_correo(destinatario, asunto, cuerpo):
     )
     message.reply_to = ReplyTo(reply_to)
 
-    # Tracking de aperturas + link de baja (CAN-SPAM).
+    # Tracking de aperturas + link de baja (CAN-SPAM). Con subscription_tracking
+    # activado, SendGrid agrega automáticamente el enlace de baja al pie del correo.
     ts = TrackingSettings()
     ts.open_tracking = OpenTracking(True)
-    ts.subscription_tracking = SubscriptionTracking(
-        enable=True,
-        text="Si no deseas recibir más correos, da de baja aquí: <% %>",
-        html='<p style="font-size:12px;color:#888">Si no deseas recibir más correos, '
-             '<a href="<% %>">da de baja aquí</a>.</p>',
-    )
+    ts.subscription_tracking = SubscriptionTracking(enable=True)
     message.tracking_settings = ts
 
     try:
