@@ -25,8 +25,31 @@ class GeneracionError(Exception):
     """Error al generar el correo, con un mensaje claro para mostrarle a Alejandro."""
 
 
-def _instrucciones():
-    """El 'system prompt': quién es Claude aquí y las reglas del correo."""
+def _instrucciones(en_ingles=False):
+    """El 'system prompt': reglas del correo. En inglés si el correo va en inglés
+    (escribir el prompt en el idioma del correo evita que el modelo lo redacte en español)."""
+    if en_ingles:
+        return (
+            "You are the booking assistant for Bragi Company, an agency that books shows for "
+            "artists. You write first-contact emails to venues and promoters proposing a concert "
+            "date. Rules:\n"
+            "- Professional, corporate B2B tone; honest, no spam or hype.\n"
+            "- Brief: 90-150 words. Easy to read on a phone.\n"
+            "- Personalize with the venue's name and city (it must not feel like a mass template).\n"
+            "- Introduce the artist in 1-2 sentences using their bio and genre; include 1 link if available.\n"
+            "- Use the given hook as the main angle.\n"
+            "- Close with a simple call to action (would they be open to discussing a date?).\n"
+            "- Sign as the Bragi Company team. Do NOT invent facts, numbers, or achievements that are "
+            "not in the profile. Do NOT include a physical address or unsubscribe text (added at send time).\n"
+            "- If the bio or links contain placeholders in [brackets], do NOT copy them literally: write "
+            "generically and make clear naturally that those details are on the way, without inventing.\n"
+            "- Write the ENTIRE email (both subject and body) in professional English.\n"
+            "- Near the close, mention naturally and professionally that the Bragi team also speaks "
+            "Spanish, in case they prefer to reply in Spanish "
+            "(e.g., 'We're also happy to continue in Spanish if you prefer.').\n\n"
+            "Respond ONLY with a valid JSON object with two keys: \"asunto\" (the subject line) and "
+            "\"cuerpo\" (the email body). No text before or after, no code fences (```)."
+        )
     return (
         "Eres el asistente de booking de Bragi Company, una agencia que consigue shows "
         "para artistas. Escribes correos de PRIMER contacto a venues y promotores para "
@@ -37,9 +60,8 @@ def _instrucciones():
         "- Presenta al artista en 1-2 frases usando su bio y género; incluye 1 link si hay.\n"
         "- Usa el gancho indicado como ángulo principal.\n"
         "- Cierra con una llamada a la acción simple (¿les interesa que hablemos de una fecha?).\n"
-        "- Firma como 'El equipo de Bragi Company'. No inventes datos, números ni logros "
-        "que no estén en el perfil. No incluyas dirección física ni texto de baja "
-        "(eso se añade al enviar).\n"
+        "- Firma como el equipo de Bragi Company. No inventes datos, números ni logros que no "
+        "estén en el perfil. No incluyas dirección física ni texto de baja (eso se añade al enviar).\n"
         "- Si la bio o los links vienen con placeholders entre [corchetes], NO los copies "
         "literalmente: escribe de forma genérica y deja claro de manera natural que faltan "
         "esos detalles, sin inventar.\n\n"
@@ -63,11 +85,49 @@ def _extraer_json(texto):
 
 
 def _mensaje_usuario(venue, perfil, gancho, instruccion=None):
-    """El prompt con los datos concretos de este venue y artista."""
-    idioma = "español" if perfil.get("idioma_correo", "es") == "es" else "inglés"
-    links = "\n".join(f"  - {l}" for l in perfil.get("links", [])) or "  (sin links)"
+    """El prompt con los datos concretos de este venue y artista (en el idioma del correo)."""
+    en_ingles = perfil.get("idioma_correo", "es") == "en"
+    categoria = venue.get("categoria")
 
-    # Contexto extra del venue (si lo tenemos) para personalizar mejor.
+    if en_ingles:
+        links = "\n".join(f"  - {l}" for l in perfil.get("links", [])) or "  (no links yet)"
+        cat = {"A": "direct venue", "B": "promoter/intermediary"}.get(categoria, "n/a")
+        extras = []
+        if venue.get("genero"):
+            extras.append(f"Programs genre: {venue['genero']}")
+        if venue.get("web"):
+            extras.append(f"Website: {venue['web']}")
+        if venue.get("capacidad"):
+            extras.append(f"Approx. capacity: {venue['capacidad']}")
+        if venue.get("encargado"):
+            extras.append(f"Contact/booker: {venue['encargado']}")
+        if venue.get("notas"):
+            extras.append(f"Internal notes (context only, do NOT quote verbatim): {venue['notas']}")
+        extras_txt = ("\n" + "\n".join(extras)) if extras else ""
+        instruccion_txt = (
+            f"\n=== ADDITIONAL INSTRUCTION (follow it) ===\n{instruccion}\n" if instruccion else ""
+        )
+        return (
+            "Write the email (subject and body) in professional English.\n\n"
+            "=== VENUE ===\n"
+            f"Name: {venue['nombre']}\n"
+            f"City: {venue.get('ciudad') or 'n/a'}, {venue.get('estado') or ''}\n"
+            f"Type: {cat}{extras_txt}\n\n"
+            "=== ARTIST ===\n"
+            f"Stage name: {perfil['nombre_artistico']}\n"
+            f"Genre: {perfil['genero']}\n"
+            f"Region: {perfil['region']}\n"
+            f"Bio: {perfil['bio']}\n"
+            f"Links:\n{links}\n\n"
+            f"=== HOOK (main angle for this email) ===\n{gancho}\n"
+            f"{instruccion_txt}\n"
+            f"Desired tone: {perfil['tono']}\n\n"
+            "Return a short, compelling subject line and the email body."
+        )
+
+    # --- Español ---
+    links = "\n".join(f"  - {l}" for l in perfil.get("links", [])) or "  (sin links)"
+    cat = {"A": "venue directo", "B": "promotor/intermediario"}.get(categoria, "s/d")
     extras = []
     if venue.get("genero"):
         extras.append(f"Género que programa: {venue['genero']}")
@@ -80,20 +140,16 @@ def _mensaje_usuario(venue, perfil, gancho, instruccion=None):
     if venue.get("notas"):
         extras.append(f"Notas internas (úsalas como contexto, NO las cites textualmente): {venue['notas']}")
     extras_txt = ("\n" + "\n".join(extras)) if extras else ""
-
     instruccion_txt = (
-        f"\n=== INSTRUCCIÓN ADICIONAL DEL USUARIO (respétala) ===\n{instruccion}\n"
-        if instruccion else ""
+        f"\n=== INSTRUCCIÓN ADICIONAL DEL USUARIO (respétala) ===\n{instruccion}\n" if instruccion else ""
     )
-
     return (
-        f"Escribe el correo en {idioma}.\n\n"
-        f"=== VENUE ===\n"
+        "Redacta el asunto y el cuerpo en español.\n\n"
+        "=== VENUE ===\n"
         f"Nombre: {venue['nombre']}\n"
         f"Ciudad: {venue.get('ciudad') or 's/d'}, {venue.get('estado') or ''}\n"
-        f"Categoría: {'venue directo' if venue.get('categoria') == 'A' else 'promotor/intermediario' if venue.get('categoria') == 'B' else 's/d'}"
-        f"{extras_txt}\n\n"
-        f"=== ARTISTA ===\n"
+        f"Categoría: {cat}{extras_txt}\n\n"
+        "=== ARTISTA ===\n"
         f"Nombre artístico: {perfil['nombre_artistico']}\n"
         f"Género: {perfil['genero']}\n"
         f"Región: {perfil['region']}\n"
@@ -102,7 +158,7 @@ def _mensaje_usuario(venue, perfil, gancho, instruccion=None):
         f"=== GANCHO (ángulo principal de este correo) ===\n{gancho}\n"
         f"{instruccion_txt}\n"
         f"Tono deseado: {perfil['tono']}\n\n"
-        f"Devuelve un asunto corto y atractivo, y el cuerpo del correo."
+        "Devuelve un asunto corto y atractivo, y el cuerpo del correo."
     )
 
 
@@ -159,7 +215,8 @@ def generar_borrador(venue, indice_gancho=0, instruccion=None):
     indice_gancho = max(0, min(indice_gancho, len(ganchos) - 1))
     gancho = ganchos[indice_gancho]
 
-    system = _instrucciones()
+    en_ingles = perfil.get("idioma_correo", "es") == "en"
+    system = _instrucciones(en_ingles)
     user = _mensaje_usuario(venue, perfil, gancho, instruccion)
 
     # Reintenta una vez si la IA no devolvió un JSON parseable.

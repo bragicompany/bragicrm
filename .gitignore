@@ -14,5 +14,8 @@ venv/
 .venv/
 env/
 
+# --- EPK: PDFs de prensa (no inflar el repo); el README sí se versiona ---
+epk/*.pdf
+
 # --- Sistema ---
 .DS_Store

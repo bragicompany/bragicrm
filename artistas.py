@@ -15,7 +15,7 @@ ARTISTAS = {
         "nombre_artistico": "Dani Vásquez",
         "genero": "R&B / pop / música en vivo en español",
         "region": "Florida (Miami y alrededores)",
-        "idioma_correo": "es",  # 'es' español / 'en' inglés — ajusta según el venue
+        "idioma_correo": "en",  # 'es' español / 'en' inglés — ajusta según el venue
         "bio": "[BIO CORTA DE DANI — 2 o 3 frases: de dónde es, su estilo, logros o números relevantes (streams, shows, etc.)]",
         "links": [
             "[Link de música 1 — ej. Spotify/YouTube]",
@@ -27,13 +27,13 @@ ARTISTAS = {
             "Flexibilidad de formato: desde set acústico íntimo hasta banda completa, según el espacio del venue.",
             "Tracción/seguidores en la zona de Miami para llenar una fecha entre semana o fin de semana.",
         ],
-        "tono": "cercano y profesional, en español, sin sonar a spam; breve y concreto.",
+        "tono": "Corporativo y formal (B2B), en inglés profesional de negocios; transmite seriedad y confianza de una empresa establecida; conciso y respetuoso.",
     },
     "Davikane": {
         "nombre_artistico": "Davikane",
         "genero": "regional mexicano / corridos / tex-mex",
         "region": "Texas (todo el estado; fuerte en la zona del Valle/Pharr)",
-        "idioma_correo": "es",
+        "idioma_correo": "en",  # 'es' español / 'en' inglés
         "bio": "[BIO CORTA DE DAVIKANE — 2 o 3 frases: de dónde es, su estilo, logros o números relevantes]",
         "links": [
             "[Link de música 1 — ej. Spotify/YouTube]",
@@ -44,7 +44,7 @@ ARTISTAS = {
             "Buen arrastre en fechas de fin de semana; ideal para venues con tarima y público de la región.",
             "Repertorio que mezcla corridos y tex-mex, adaptable a la línea de programación del venue.",
         ],
-        "tono": "cercano y profesional, en español, con sabor regional; breve y directo.",
+        "tono": "Corporativo y formal (B2B), en inglés profesional de negocios; transmite seriedad y confianza de una empresa establecida; conciso y respetuoso.",
     },
 }
 
