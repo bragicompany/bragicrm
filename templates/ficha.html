@@ -101,9 +101,13 @@
   <!-- CORREOS: borradores con IA + aprobacion #2 -->
   <div id="correos" style="margin-top:28px">
     <h2 style="font-size:18px;margin-bottom:4px">Correos (borradores)</h2>
-    <div style="font-size:13px;color:#6b7280;margin-bottom:14px">
-      La IA escribe un borrador; tú lo revisas, editas y apruebas. Nada se envía aún (eso es la Fase 5).
+    <div style="font-size:13px;color:#6b7280;margin-bottom:8px">
+      La IA escribe un borrador; tú lo revisas, editas, apruebas y envías.
       Puedes generar con distintos ganchos y compararlos.
+    </div>
+    <div style="font-size:12px;color:#6b7280;margin-bottom:14px">
+      📤 Enviados esta semana (todos los venues): <strong>{{ enviados_semana }}</strong>
+      <span style="color:#9ca3af">· rampa sugerida: ~10/semana al inicio, subir gradual</span>
     </div>
 
     {% if correo_ok %}<div class="aviso-ok">✓ {% if correo_ok != '1' %}{{ correo_ok }} borradores generados{% else %}Borrador generado{% endif %}. Revísalos abajo.</div>{% endif %}
@@ -144,9 +148,9 @@
     {% if mensajes %}
       <div class="timeline">
         {% for m in mensajes %}
-          <div class="evento" style="border-left-color:{% if m.estado=='aprobado' %}#0a7d40{% else %}#2b4eff{% endif %}">
+          <div class="evento" style="border-left-color:{% if m.estado=='enviado' %}#1d4ed8{% elif m.estado=='aprobado' %}#0a7d40{% else %}#2b4eff{% endif %}">
             <div class="evento-cab">
-              <span class="chip est-{{ 'calificado' if m.estado=='aprobado' else 'nuevo' }}">{{ m.estado }}</span>
+              <span class="chip est-{{ m.estado }}">{{ m.estado }}</span>
               {% if m.gancho %}<span style="font-size:12px;color:#6b7280">gancho: {{ m.gancho[:60] }}{% if m.gancho|length > 60 %}…{% endif %}</span>{% endif %}
               <span class="evento-fecha" style="margin-left:auto">{{ m.created_at }}</span>
             </div>
@@ -160,14 +164,35 @@
               <button class="btn gris" type="submit">Guardar cambios</button>
             </form>
             {% set destino = (v.email.split(',')[0].strip()) if v.email else '' %}
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-              <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
-                {% if m.estado != 'aprobado' %}
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+              {% if m.estado == 'borrador' %}
+                <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
                   <button class="btn verde" name="accion" value="aprobar">✅ Aprobar</button>
+                </form>
+              {% elif m.estado == 'aprobado' %}
+                {% if destino and v.estado_pipeline != 'descartado' %}
+                  <form method="post" action="{{ url_for('enviar_mensaje', mensaje_id=m.id) }}"
+                        onsubmit="return confirm('¿Enviar este correo a {{ destino }}? Sale al venue de verdad.')">
+                    <button class="btn verde" type="submit">📤 Enviar a {{ destino }}</button>
+                  </form>
                 {% else %}
-                  <button class="btn gris" name="accion" value="reabrir">↩︎ Volver a borrador</button>
+                  <span style="font-size:13px;color:#b45309">No se puede enviar:
+                    {% if not destino %}el venue no tiene email{% else %}venue descartado{% endif %}.</span>
                 {% endif %}
-              </form>
+                <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
+                  <button class="btn gris" name="accion" value="reabrir">↩︎ Volver a borrador</button>
+                </form>
+              {% elif m.estado == 'enviado' %}
+                <span style="font-size:13px;color:#1d4ed8">📤 Enviado {{ m.fecha_envio }} a {{ m.destinatario }}</span>
+                <form method="post" action="{{ url_for('marcar_mensaje', mensaje_id=m.id) }}">
+                  {% if m.abierto %}<span class="chip est-aprobado">abierto ✓</span>
+                  {% else %}<button class="btn gris" name="accion" value="abierto">Marcar abierto</button>{% endif %}
+                </form>
+                <form method="post" action="{{ url_for('marcar_mensaje', mensaje_id=m.id) }}">
+                  {% if m.respondido %}<span class="chip est-respondió">respondió ✓</span>
+                  {% else %}<button class="btn gris" name="accion" value="respondido">Marcar respondió</button>{% endif %}
+                </form>
+              {% endif %}
               <button type="button" class="btn gris" onclick="copiarCorreo({{ m.id }})">📋 Copiar</button>
               {% if destino %}
                 <a class="btn gris" href="mailto:{{ destino|urlencode }}?subject={{ (m.asunto or '')|urlencode }}&body={{ (m.cuerpo or '')|urlencode }}">✉️ Abrir en tu correo</a>

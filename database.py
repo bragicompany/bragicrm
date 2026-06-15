@@ -13,7 +13,7 @@ y se ira completando en fases siguientes (enriquecimiento, notas, pipeline...).
 import os
 import sqlite3
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -107,10 +107,10 @@ def crear_base():
     print(f"Base de datos lista: {DB_FILE}")
 
 
-def _columnas_existentes():
-    """Devuelve la lista de columnas que tiene hoy la tabla venues."""
+def _columnas_existentes(tabla="venues"):
+    """Devuelve la lista de columnas que tiene hoy una tabla."""
     conn = conectar()
-    filas = conn.execute("PRAGMA table_info(venues)").fetchall()
+    filas = conn.execute(f"PRAGMA table_info({tabla})").fetchall()
     conn.close()
     return [f["name"] for f in filas]
 
@@ -118,20 +118,27 @@ def _columnas_existentes():
 def migrar():
     """Aplica cambios de estructura SIN borrar datos (solo agrega columnas que falten).
 
-    ALTER TABLE ADD COLUMN nunca destruye filas: los venues viejos quedan con el
+    ALTER TABLE ADD COLUMN nunca destruye filas: las filas viejas quedan con el
     campo nuevo vacio. Es seguro correrlo muchas veces.
     """
-    existentes = _columnas_existentes()
-    # (columna, definicion) — agregar aqui futuras columnas nuevas.
-    nuevas = [
-        ("enriquecido_el", "TEXT"),  # cuando se enriquecio (None = aun no)
-    ]
+    # tabla -> [(columna, definicion)] — agregar aqui futuras columnas nuevas.
+    cambios = {
+        "venues": [
+            ("enriquecido_el", "TEXT"),  # cuando se enriquecio (None = aun no)
+        ],
+        "mensajes": [
+            ("sg_message_id", "TEXT"),   # id del envio en SendGrid (Fase 5)
+            ("destinatario", "TEXT"),    # a quien se envio
+        ],
+    }
     conn = conectar()
     aplicadas = []
-    for nombre, definicion in nuevas:
-        if nombre not in existentes:
-            conn.execute(f"ALTER TABLE venues ADD COLUMN {nombre} {definicion}")
-            aplicadas.append(nombre)
+    for tabla, columnas in cambios.items():
+        existentes = [f["name"] for f in conn.execute(f"PRAGMA table_info({tabla})").fetchall()]
+        for nombre, definicion in columnas:
+            if nombre not in existentes:
+                conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {definicion}")
+                aplicadas.append(f"{tabla}.{nombre}")
     conn.commit()
     conn.close()
     if aplicadas:
@@ -378,6 +385,53 @@ def eliminar_mensaje(mensaje_id):
     conn.commit()
     conn.close()
     return venue_id
+
+
+def marcar_enviado(mensaje_id, sg_message_id, destinatario):
+    """Marca un mensaje como enviado (Fase 5): estado, id de SendGrid, destinatario y fecha."""
+    ahora = datetime.now().isoformat(timespec="seconds")
+    conn = conectar()
+    conn.execute(
+        """UPDATE mensajes
+           SET estado = 'enviado', sg_message_id = ?, destinatario = ?,
+               fecha_envio = ?, updated_at = ?
+           WHERE id = ?""",
+        (sg_message_id, destinatario, ahora, ahora, mensaje_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def marcar_tracking(mensaje_id, abierto=None, respondido=None):
+    """Marca a mano si un correo fue abierto o respondido (mientras no hay webhook)."""
+    sets, params = [], []
+    if abierto is not None:
+        sets.append("abierto = ?")
+        params.append(1 if abierto else 0)
+    if respondido is not None:
+        sets.append("respondido = ?")
+        params.append(1 if respondido else 0)
+    if not sets:
+        return
+    sets.append("updated_at = ?")
+    params.append(datetime.now().isoformat(timespec="seconds"))
+    params.append(mensaje_id)
+    conn = conectar()
+    conn.execute(f"UPDATE mensajes SET {', '.join(sets)} WHERE id = ?", params)
+    conn.commit()
+    conn.close()
+
+
+def contar_enviados_recientes(dias=7):
+    """Cuántos correos se han enviado en los últimos N días (para vigilar la rampa)."""
+    corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
+    conn = conectar()
+    fila = conn.execute(
+        "SELECT COUNT(*) FROM mensajes WHERE estado = 'enviado' AND fecha_envio >= ?",
+        (corte,),
+    ).fetchone()
+    conn.close()
+    return fila[0] if fila else 0
 
 
 if __name__ == "__main__":

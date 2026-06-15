@@ -18,6 +18,7 @@ from flask import Flask, render_template, request, abort, redirect, url_for
 import database
 import artistas
 import ai_email
+import email_sender
 
 app = Flask(__name__)
 
@@ -123,6 +124,7 @@ def ficha(venue_id):
         mensajes=mensajes,
         ganchos=ganchos,
         perfil_incompleto=perfil_incompleto,
+        enviados_semana=database.contar_enviados_recientes(7),
         correo_ok=request.args.get("correo_ok"),
         correo_error=request.args.get("correo_error"),
     )
@@ -282,6 +284,56 @@ def borrar_mensaje(mensaje_id):
     if venue_id is None:
         return redirect(url_for("lista"))
     return redirect(url_for("ficha", venue_id=venue_id) + "#correos")
+
+
+@app.route("/mensaje/<int:mensaje_id>/enviar", methods=["POST"])
+def enviar_mensaje(mensaje_id):
+    m = database.obtener_mensaje(mensaje_id)
+    if m is None:
+        abort(404)
+    venue = database.obtener_venue(m["venue_id"])
+    destino_url = url_for("ficha", venue_id=m["venue_id"])
+
+    # Guardas de seguridad antes de enviar (esto sí sale al mundo).
+    if m["estado"] != "aprobado":
+        return redirect(destino_url + "?correo_error=Solo se envían borradores aprobados.#correos")
+    if venue and venue["estado_pipeline"] == "descartado":
+        return redirect(destino_url + "?correo_error=Este venue está descartado; no se envía.#correos")
+    destinatario = (venue["email"].split(",")[0].strip() if venue and venue["email"] else "")
+    if not destinatario:
+        return redirect(destino_url + "?correo_error=El venue no tiene email; usa llamada o WhatsApp.#correos")
+
+    try:
+        sg_id = email_sender.enviar_correo(destinatario, m["asunto"], m["cuerpo"])
+        database.marcar_enviado(mensaje_id, sg_id, destinatario)
+        # Mueve el venue en el pipeline y deja registro en la línea de tiempo.
+        if venue and venue["estado_pipeline"] in ("nuevo", "calificado"):
+            database.actualizar_venue(venue["id"], {"estado_pipeline": "contactado"})
+        database.agregar_actividad(
+            venue_id=m["venue_id"], canal="correo",
+            resumen=f"Correo enviado: {m['asunto']}",
+            resultado="enviado", siguiente_paso="Esperar respuesta / follow-up",
+        )
+        return redirect(destino_url + "?correo_ok=enviado#correos")
+    except (email_sender.FaltaSendgridError, email_sender.EnvioError) as e:
+        return redirect(destino_url + f"?correo_error={e}#correos")
+    except Exception as e:
+        return redirect(destino_url + f"?correo_error=No se pudo enviar: {e}#correos")
+
+
+@app.route("/mensaje/<int:mensaje_id>/marcar", methods=["POST"])
+def marcar_mensaje(mensaje_id):
+    m = database.obtener_mensaje(mensaje_id)
+    if m is None:
+        abort(404)
+    accion = request.form.get("accion")
+    if accion == "abierto":
+        database.marcar_tracking(mensaje_id, abierto=True)
+    elif accion == "respondido":
+        database.marcar_tracking(mensaje_id, respondido=True)
+        # Si respondió, mueve el venue a 'respondió' en el pipeline.
+        database.actualizar_venue(m["venue_id"], {"estado_pipeline": "respondió"})
+    return redirect(url_for("ficha", venue_id=m["venue_id"]) + "#correos")
 
 
 if __name__ == "__main__":
