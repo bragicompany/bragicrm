@@ -70,6 +70,28 @@ def utilidades():
 
 
 @app.route("/")
+def inicio():
+    """Panel de inicio: números de un vistazo."""
+    total_venues = len(database.listar_venues())
+    por_estado = database.contar_por("estado_pipeline", "venues")
+    por_artista = database.contar_por("artista", "venues")
+    msg_estados = database.contar_por("estado", "mensajes")
+    # Orden lógico del pipeline para mostrar los chips.
+    orden_pipeline = ["nuevo", "calificado", "contactado", "respondió",
+                      "negociando", "cerrado", "descartado"]
+    pipeline = [(e, por_estado.get(e, 0)) for e in orden_pipeline if por_estado.get(e, 0)]
+    return render_template(
+        "inicio.html",
+        total_venues=total_venues,
+        pipeline=pipeline,
+        por_artista=por_artista,
+        msg_estados=msg_estados,
+        enviados_semana=database.contar_enviados_recientes(7),
+        recordatorios=database.listar_recordatorios()[:6],
+    )
+
+
+@app.route("/venues")
 def lista():
     # Lee los filtros que vengan en la URL (vacios = sin filtro).
     ciudad = request.args.get("ciudad") or None

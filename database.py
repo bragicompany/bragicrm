@@ -422,6 +422,20 @@ def marcar_tracking(mensaje_id, abierto=None, respondido=None):
     conn.close()
 
 
+def contar_por(columna, tabla="venues"):
+    """Cuenta filas agrupadas por una columna. Devuelve dict {valor: cantidad}."""
+    columnas_ok = {"venues": {"estado_pipeline", "artista", "categoria", "ciudad"},
+                   "mensajes": {"estado"}}
+    if columna not in columnas_ok.get(tabla, set()):
+        return {}
+    conn = conectar()
+    filas = conn.execute(
+        f"SELECT COALESCE({columna},'(sin)') AS k, COUNT(*) AS c FROM {tabla} GROUP BY k"
+    ).fetchall()
+    conn.close()
+    return {f["k"]: f["c"] for f in filas}
+
+
 def contar_enviados_recientes(dias=7):
     """Cuántos correos se han enviado en los últimos N días (para vigilar la rampa)."""
     corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")

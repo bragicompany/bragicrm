@@ -2,7 +2,7 @@
 {% block title %}Venues — CRM Bragi{% endblock %}
 {% block contenido %}
 
-  <form class="filtros" method="get" action="/">
+  <form class="filtros" method="get" action="{{ url_for('lista') }}">
     <div>
       <label>Artista</label>
       <select name="artista" onchange="this.form.submit()">
@@ -40,7 +40,7 @@
       </select>
     </div>
     <button class="btn" type="submit">Filtrar</button>
-    <a class="btn gris" href="/">Limpiar</a>
+    <a class="btn gris" href="{{ url_for('lista') }}">Limpiar</a>
   </form>
 
   <div class="conteo">{{ venues|length }} venue(s)</div>
