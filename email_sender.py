@@ -11,7 +11,12 @@ La llave va en .env (SENDGRID_API_KEY). Si falta, lo dice claro.
 """
 
 import os
+import base64
 import html as _html
+
+# Logo que se incrusta en la firma del correo (viaja con el email).
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo_email.jpg")
+LOGO_CID = "bragilogo"
 
 
 class FaltaSendgridError(Exception):
@@ -22,14 +27,19 @@ class EnvioError(Exception):
     """Error al enviar, con un mensaje claro para mostrar."""
 
 
-def _cuerpo_html(cuerpo, direccion):
-    """Convierte el cuerpo (texto plano) a HTML simple + pie con la dirección.
+def _cuerpo_html(cuerpo, direccion, con_logo=True):
+    """Convierte el cuerpo (texto plano) a HTML simple + firma con logo y dirección.
     El link de baja lo agrega SendGrid automáticamente (subscription tracking)."""
     seguro = _html.escape(cuerpo or "").replace("\n", "<br>")
+    logo = (
+        f'<img src="cid:{LOGO_CID}" width="120" alt="Bragi Company" '
+        f'style="display:block;margin:8px 0">' if con_logo else ""
+    )
     return (
         f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#111;line-height:1.5">'
         f"{seguro}"
         f'<hr style="border:none;border-top:1px solid #ddd;margin:20px 0">'
+        f"{logo}"
         f'<p style="font-size:12px;color:#888">{_html.escape(direccion)}</p>'
         f"</div>"
     )
@@ -58,15 +68,29 @@ def enviar_correo(destinatario, asunto, cuerpo):
     import sendgrid
     from sendgrid.helpers.mail import (
         Mail, Email, To, ReplyTo, TrackingSettings, OpenTracking, SubscriptionTracking,
+        Attachment, FileContent, FileName, FileType, Disposition, ContentId,
     )
 
+    con_logo = os.path.exists(LOGO_PATH)
     message = Mail(
         from_email=Email(remitente, nombre),
         to_emails=To(destinatario),
         subject=asunto,
-        html_content=_cuerpo_html(cuerpo, direccion),
+        html_content=_cuerpo_html(cuerpo, direccion, con_logo=con_logo),
     )
     message.reply_to = ReplyTo(reply_to)
+
+    # Incrustar el logo de Bragi en la firma (imagen inline, viaja con el correo).
+    if con_logo:
+        with open(LOGO_PATH, "rb") as f:
+            datos_logo = base64.b64encode(f.read()).decode()
+        message.attachment = Attachment(
+            file_content=FileContent(datos_logo),
+            file_name=FileName("bragi.jpg"),
+            file_type=FileType("image/jpeg"),
+            disposition=Disposition("inline"),
+            content_id=ContentId(LOGO_CID),
+        )
 
     # Tracking de aperturas + link de baja (CAN-SPAM). Con subscription_tracking
     # activado, SendGrid agrega automáticamente el enlace de baja al pie del correo.
