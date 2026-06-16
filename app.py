@@ -98,12 +98,14 @@ def lista():
     artista = request.args.get("artista") or None
     estado_pipeline = request.args.get("estado_pipeline") or None
     categoria = request.args.get("categoria") or None
+    buscar = request.args.get("q") or None
 
     venues = database.listar_venues(
         ciudad=ciudad,
         artista=artista,
         estado_pipeline=estado_pipeline,
         categoria=categoria,
+        buscar=buscar,
     )
 
     # Opciones para los menus de filtro (valores que existen en la base).
@@ -118,6 +120,7 @@ def lista():
         "artista": artista or "",
         "estado_pipeline": estado_pipeline or "",
         "categoria": categoria or "",
+        "q": buscar or "",
     }
 
     return render_template("lista.html", venues=venues, filtros=filtros, seleccion=seleccion)

@@ -3,6 +3,11 @@
 {% block contenido %}
 
   <form class="filtros" method="get" action="{{ url_for('lista') }}">
+    <div style="flex:1;min-width:180px">
+      <label>Buscar por nombre</label>
+      <input type="text" name="q" value="{{ seleccion.q }}" placeholder="ej. Crazy Bull"
+             style="width:100%;padding:7px 10px;border:1px solid var(--linea);border-radius:8px;font-size:14px">
+    </div>
     <div>
       <label>Artista</label>
       <select name="artista" onchange="this.form.submit()">
@@ -53,6 +58,7 @@
           <th>Ciudad</th>
           <th>Cat.</th>
           <th>Artista</th>
+          <th>Email</th>
           <th>Telefono</th>
           <th>Google</th>
           <th>Estado</th>
@@ -64,7 +70,8 @@
             <td><a class="fila" href="/venue/{{ v.id }}">{{ v.nombre }}</a></td>
             <td>{{ v.ciudad or "—" }}{% if v.estado %}, {{ v.estado }}{% endif %}</td>
             <td>{% if v.categoria %}<span class="chip cat-{{ v.categoria }}">{{ v.categoria }}</span>{% else %}—{% endif %}</td>
-            <td>{{ v.artista or "—" }}</td>
+            <td>{% if v.artista %}<span class="chip art-{{ v.artista }}">{{ v.artista }}</span>{% else %}—{% endif %}</td>
+            <td>{% if v.email %}<span title="{{ v.email }}" style="color:#0a7d40;font-weight:700">✓</span>{% else %}<span style="color:#cbd5e1">—</span>{% endif %}</td>
             <td>{{ v.telefono or "—" }}</td>
             <td>
               {% set g = enlace_google(v.place_id, v.nombre) %}

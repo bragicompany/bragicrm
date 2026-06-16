@@ -214,8 +214,9 @@ def guardar_venue(datos):
     return nuevo
 
 
-def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=None):
-    """Devuelve los venues, con filtros opcionales. Ordenados por fecha de creacion (mas nuevos primero)."""
+def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=None, buscar=None):
+    """Devuelve los venues, con filtros opcionales. Ordenados por fecha de creacion (mas nuevos primero).
+    'buscar' filtra por nombre (texto parcial)."""
     consulta = "SELECT * FROM venues WHERE 1=1"
     params = []
     if ciudad:
@@ -230,6 +231,9 @@ def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=Non
     if categoria:
         consulta += " AND categoria = ?"
         params.append(categoria)
+    if buscar:
+        consulta += " AND nombre LIKE ?"
+        params.append(f"%{buscar}%")
     consulta += " ORDER BY created_at DESC"
 
     conn = conectar()
