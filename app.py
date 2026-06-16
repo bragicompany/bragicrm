@@ -99,6 +99,8 @@ def lista():
     estado_pipeline = request.args.get("estado_pipeline") or None
     categoria = request.args.get("categoria") or None
     buscar = request.args.get("q") or None
+    email_filtro = request.args.get("email") or ""  # 'si' | 'no' | ''
+    con_email = True if email_filtro == "si" else (False if email_filtro == "no" else None)
 
     venues = database.listar_venues(
         ciudad=ciudad,
@@ -106,6 +108,7 @@ def lista():
         estado_pipeline=estado_pipeline,
         categoria=categoria,
         buscar=buscar,
+        con_email=con_email,
     )
 
     # Opciones para los menus de filtro (valores que existen en la base).
@@ -121,6 +124,7 @@ def lista():
         "estado_pipeline": estado_pipeline or "",
         "categoria": categoria or "",
         "q": buscar or "",
+        "email": email_filtro,
     }
 
     return render_template("lista.html", venues=venues, filtros=filtros, seleccion=seleccion)
