@@ -340,7 +340,8 @@ def enviar_mensaje(mensaje_id):
             database.actualizar_venue(venue["id"], {"estado_pipeline": "contactado"})
         database.agregar_actividad(
             venue_id=m["venue_id"], canal="correo",
-            resumen=f"Correo enviado: {m['asunto']}",
+            fecha=date.today().isoformat(),  # el día en que se hizo la gestión
+            resumen=f"Correo enviado a {destinatario}: {m['asunto']}",
             resultado="enviado", siguiente_paso="Esperar respuesta / follow-up",
         )
         return redirect(destino_url + "?correo_ok=enviado#correos")
