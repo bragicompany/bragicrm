@@ -45,7 +45,7 @@
     <h3>Venues por artista</h3>
     <div class="pills">
       {% for artista, n in por_artista.items() %}
-        <a class="pill" href="{{ url_for('lista', artista=artista) }}">{{ artista }} <b>{{ n }}</b></a>
+        <a class="pill" href="{{ url_for('artista', nombre=artista) }}">{{ artista }} <b>{{ n }}</b></a>
       {% endfor %}
     </div>
   </div>

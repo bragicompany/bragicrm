@@ -16,6 +16,7 @@ from urllib.parse import quote_plus
 from flask import Flask, render_template, request, abort, redirect, url_for
 
 import database
+import places_search
 import artistas
 import ai_email
 import email_sender
@@ -218,6 +219,60 @@ def borrar_actividad(actividad_id):
 def agenda():
     recordatorios = database.listar_recordatorios()
     return render_template("agenda.html", recordatorios=recordatorios)
+
+
+# Tipos de lugar -> (categoría A/B, plantilla de búsqueda para Google Places)
+TIPOS_LUGAR = {
+    "venues": ("A", "salas de conciertos y venues de música en vivo en {donde}"),
+    "bares": ("A", "bares con música en vivo en {donde}"),
+    "clubes": ("A", "clubes nocturnos y discotecas en {donde}"),
+    "promotores": ("B", "promotores de eventos y empresas de eventos en {donde}"),
+}
+
+
+@app.route("/artista/<nombre>")
+def artista(nombre):
+    perfil = artistas.obtener(nombre)
+    if perfil is None:
+        abort(404)
+    venues = database.listar_venues(artista=nombre)
+    con_email = sum(1 for v in venues if v["email"])
+    return render_template(
+        "artista.html",
+        nombre=nombre, perfil=perfil, venues=venues,
+        total=len(venues), con_email=con_email,
+        tipos=TIPOS_LUGAR,
+        ok=request.args.get("ok"), error=request.args.get("error"),
+    )
+
+
+@app.route("/artista/<nombre>/buscar", methods=["POST"])
+def buscar_lugares(nombre):
+    perfil = artistas.obtener(nombre)
+    if perfil is None:
+        abort(404)
+    ciudad = (request.form.get("ciudad") or "").strip()
+    estado = (request.form.get("estado") or "").strip() or perfil.get("estado_default", "")
+    tipo = request.form.get("tipo") or "venues"
+    destino = url_for("artista", nombre=nombre)
+
+    if not ciudad:
+        return redirect(destino + "?error=Indica la ciudad para buscar.")
+
+    categoria, plantilla = TIPOS_LUGAR.get(tipo, TIPOS_LUGAR["venues"])
+    donde = ciudad + (f", {estado}" if estado else "")
+    query = plantilla.format(donde=donde)
+    try:
+        r = places_search.buscar_y_guardar(
+            query=query, artista=nombre, categoria=categoria,
+            ciudad=ciudad, estado=estado, pais="USA", max_resultados=20,
+        )
+        msg = f"Búsqueda en {donde}: {r['nuevos']} nuevos, {r['repetidos']} ya estaban (de {r['total']})."
+        return redirect(destino + f"?ok={msg}")
+    except places_search.BusquedaError as e:
+        return redirect(destino + f"?error={e}")
+    except Exception as e:
+        return redirect(destino + f"?error=No se pudo buscar: {e}")
 
 
 @app.route("/venue/<int:venue_id>/generar-correo", methods=["POST"])

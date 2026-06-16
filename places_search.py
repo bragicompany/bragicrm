@@ -60,15 +60,20 @@ def _ciudad_de_componentes(componentes):
     return None
 
 
+class BusquedaError(Exception):
+    """Error al buscar en Google Places, con mensaje claro para mostrar."""
+
+
 def buscar(query, max_resultados=20):
-    """Llama a Google Places y devuelve una lista de lugares (manejando paginacion)."""
-    if not API_KEY:
-        print("ERROR: falta GOOGLE_PLACES_API_KEY. Copia .env.example a .env y pega tu llave.")
-        sys.exit(1)
+    """Llama a Google Places y devuelve una lista de lugares (manejando paginacion).
+    Lee la llave al momento (no en import) y lanza BusquedaError con mensajes claros."""
+    api_key = os.getenv("GOOGLE_PLACES_API_KEY")
+    if not api_key or "pega_aqui" in api_key:
+        raise BusquedaError("Falta GOOGLE_PLACES_API_KEY en el archivo .env.")
 
     headers = {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": API_KEY,
+        "X-Goog-Api-Key": api_key,
         "X-Goog-FieldMask": CAMPOS,
     }
 
@@ -80,10 +85,12 @@ def buscar(query, max_resultados=20):
         if page_token:
             cuerpo["pageToken"] = page_token
 
-        resp = requests.post(ENDPOINT, headers=headers, json=cuerpo, timeout=30)
+        try:
+            resp = requests.post(ENDPOINT, headers=headers, json=cuerpo, timeout=30)
+        except requests.RequestException as e:
+            raise BusquedaError(f"No hay conexión con Google Places: {e}")
         if resp.status_code != 200:
-            print(f"ERROR de Google Places ({resp.status_code}): {resp.text}")
-            break
+            raise BusquedaError(f"Google Places devolvió un error ({resp.status_code}). Revisa la llave o la cuota.")
 
         data = resp.json()
         lugares.extend(data.get("places", []))
@@ -97,22 +104,17 @@ def buscar(query, max_resultados=20):
     return lugares[:max_resultados]
 
 
-def ejecutar(query, artista, categoria, ciudad, estado, pais, max_resultados):
-    """Busca y guarda en la base. Imprime un resumen claro."""
-    # Asegura que la base y la tabla existan (no borra nada si ya estan).
+def buscar_y_guardar(query, artista, categoria, ciudad, estado, pais="USA", max_resultados=20):
+    """Busca en Google Places y guarda los resultados. Devuelve conteos.
+    Reutilizable desde el CLI y desde la app web. No imprime."""
     database.crear_base()
-
-    print(f"\nBuscando en Google Places: \"{query}\" ...")
     lugares = buscar(query, max_resultados)
-    print(f"Google devolvio {len(lugares)} lugares.\n")
-
     nuevos = 0
     repetidos = 0
     for lugar in lugares:
         nombre = (lugar.get("displayName") or {}).get("text")
         if not nombre:
             continue
-
         datos = {
             "place_id": lugar.get("id"),
             "nombre": nombre,
@@ -127,15 +129,23 @@ def ejecutar(query, artista, categoria, ciudad, estado, pais, max_resultados):
             "rating": lugar.get("rating"),
             "fuente": "google_places",
         }
-
         if database.guardar_venue(datos):
             nuevos += 1
-            print(f"  + Guardado: {nombre}")
         else:
             repetidos += 1
-            print(f"  . Ya existia: {nombre}")
+    return {"nuevos": nuevos, "repetidos": repetidos, "total": len(lugares)}
 
-    print(f"\nResumen: {nuevos} nuevos, {repetidos} ya estaban. Total recibidos: {len(lugares)}.")
+
+def ejecutar(query, artista, categoria, ciudad, estado, pais, max_resultados):
+    """Versión CLI: busca, guarda e imprime un resumen."""
+    print(f"\nBuscando en Google Places: \"{query}\" ...")
+    try:
+        r = buscar_y_guardar(query, artista, categoria, ciudad, estado, pais, max_resultados)
+    except BusquedaError as e:
+        print(f"ERROR: {e}")
+        sys.exit(1)
+    print(f"Google devolvio {r['total']} lugares.")
+    print(f"\nResumen: {r['nuevos']} nuevos, {r['repetidos']} ya estaban.")
     print("Abre la app web para verlos:  python3 app.py\n")
 
 

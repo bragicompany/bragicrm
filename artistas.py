@@ -15,6 +15,7 @@ ARTISTAS = {
         "nombre_artistico": "Dani Vásquez",
         "genero": "R&B con fusión contemporánea (trap, hip-hop, drum & bass, pop, dancehall, afro, bossa nova)",
         "region": "Florida (Miami). Cantautora venezolana.",
+        "estado_default": "FL",  # estado que se autocompleta en el buscador
         "idioma_correo": "en",  # 'es' español / 'en' inglés
         "bio": (
             "Dani Vásquez es una cantautora venezolana radicada en Miami que fusiona R&B "
@@ -43,6 +44,7 @@ ARTISTAS = {
         "nombre_artistico": "Davikane",
         "genero": "Regional mexicano / tex-mex (banda, rancheras, corridos, cumbia, mariachi)",
         "region": "Texas (todo el estado; nació en Pharr, TX, y es local/fuerte en el Valle).",
+        "estado_default": "TX",  # estado que se autocompleta en el buscador
         "idioma_correo": "en",  # 'es' español / 'en' inglés
         "bio": (
             "Davikane (Victor Daniel Plasencia Flores) es un cantautor nacido en Pharr, Texas "
