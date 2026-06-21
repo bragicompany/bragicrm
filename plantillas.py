@@ -45,7 +45,7 @@ PLANTILLAS = {
                     "show: [LINK]\n\n"
                     "If it's a fit for a date, just reply and we'll lock it in quickly — a short "
                     "call is all it takes.\n\n"
-                    "Best,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
                 "B": (
                     "{saludo}\n\n"
@@ -58,7 +58,7 @@ PLANTILLAS = {
                     "Here's his brochure and a live video so you can see the level right away: "
                     "[LINK]\n\n"
                     "If it works for you, we'll lock it in fast without taking up your time.\n\n"
-                    "Best,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
             },
         },
@@ -83,7 +83,7 @@ PLANTILLAS = {
                     "show en vivo: [LINK]\n\n"
                     "Si les interesa para una fecha, nos dicen y lo concretamos rápido (con una "
                     "llamada corta basta).\n\n"
-                    "Un saludo,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
                 "B": (
                     "{saludo}\n\n"
@@ -96,7 +96,7 @@ PLANTILLAS = {
                     "Les dejamos el brochure y el video en vivo para que vean el nivel de una vez: "
                     "[LINK]\n\n"
                     "Si les sirve, lo concretamos rápido sin hacerles perder tiempo.\n\n"
-                    "Un saludo,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
             },
         },
@@ -120,7 +120,7 @@ PLANTILLAS = {
                     "place too.\n\n"
                     "Here's her brochure and a video of the live show: [LINK]\n\n"
                     "If it's a fit for a date, just reply and we'll lock it in quickly.\n\n"
-                    "Best,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
                 "B": (
                     "{saludo}\n\n"
@@ -132,7 +132,7 @@ PLANTILLAS = {
                     "night, ready for your socials.\n\n"
                     "Here's her brochure and a live video: [LINK]\n\n"
                     "If it works for you, we'll lock it in fast.\n\n"
-                    "Best,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
             },
         },
@@ -155,7 +155,7 @@ PLANTILLAS = {
                     "Aquí mismo les dejamos el brochure y el video del show para que lo vean: "
                     "[LINK]\n\n"
                     "Si les interesa para una fecha, nos dicen y lo concretamos rápido.\n\n"
-                    "Un saludo,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
                 "B": (
                     "{saludo}\n\n"
@@ -167,7 +167,7 @@ PLANTILLAS = {
                     "sus redes.\n\n"
                     "Les compartimos el brochure y el video en vivo: [LINK]\n\n"
                     "Si les sirve, lo concretamos rápido.\n\n"
-                    "Un saludo,\nAlejandro — Bragi Company"
+                    "{firma}"
                 ),
             },
         },
@@ -177,6 +177,12 @@ PLANTILLAS = {
 IDIOMAS = ("en", "es")
 VERSIONES = ("A", "B")
 BROCHURE_PENDIENTE = "[BROCHURE PENDIENTE — agrega el link en artistas.py]"
+
+# Firma (la voz es de empresa; el nombre, cargo y apellido van SOLO aquí).
+FIRMA = {
+    "en": "Best,\nAlejandro Salazar — Marketing Director, Bragi Company",
+    "es": "Un saludo,\nAlejandro Salazar — Director de Marketing, Bragi Company",
+}
 
 
 def tiene(artista):
@@ -241,16 +247,28 @@ def generar(artista, venue, idioma="en", version="A", asunto_indice=0):
     asunto_indice = max(0, min(int(asunto_indice or 0), len(asuntos_lista) - 1))
 
     venue_nombre = (venue.get("nombre") or "el venue").strip()
+    perfil = artistas.obtener(artista) or {}
+    nombre_artistico = perfil.get("nombre_artistico", artista)
     brochure = brochure_de(artista)
     brochure_falta = brochure is None
-    link = brochure or BROCHURE_PENDIENTE
     saludo = _saludo(idioma, venue.get("encargado"), venue_nombre)
+    firma = FIRMA[idioma]
+
+    # El [LINK] se guarda como enlace con etiqueta: [texto](url). En el correo
+    # final se ve como un BOTÓN ("Ver el brochure..."); el link largo no se muestra.
+    if brochure_falta:
+        link = BROCHURE_PENDIENTE
+    else:
+        etiqueta = (f"View {nombre_artistico}'s brochure & video"
+                    if idioma == "en" else f"Ver el brochure de {nombre_artistico}")
+        link = f"[{etiqueta}]({brochure})"
 
     def rellenar(texto):
         return (
             texto.replace("{saludo}", saludo)
             .replace("[venue]", venue_nombre)
             .replace("[LINK]", link)
+            .replace("{firma}", firma)
         )
 
     return {

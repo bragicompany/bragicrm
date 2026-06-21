@@ -11,8 +11,12 @@ La llave va en .env (SENDGRID_API_KEY). Si falta, lo dice claro.
 """
 
 import os
+import re
 import base64
 import html as _html
+
+# Enlaces con etiqueta estilo [texto](url) -> se convierten en un botón en el correo.
+_ENLACE_MD = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
 
 # Logo que se incrusta en la firma del correo (viaja con el email).
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo_email.jpg")
@@ -27,10 +31,34 @@ class EnvioError(Exception):
     """Error al enviar, con un mensaje claro para mostrar."""
 
 
+def _boton(texto, url):
+    """Botón lima (marca Bragi) para enlaces como el brochure."""
+    return (
+        f'<a href="{_html.escape(url, quote=True)}" '
+        f'style="display:inline-block;background:#bef264;color:#111;text-decoration:none;'
+        f'font-weight:bold;padding:11px 20px;border-radius:8px;margin:6px 0;'
+        f'font-family:Arial,Helvetica,sans-serif">{_html.escape(texto)} ▸</a>'
+    )
+
+
 def _cuerpo_html(cuerpo, direccion, con_logo=True):
     """Convierte el cuerpo (texto plano) a HTML simple + firma con logo y dirección.
-    El link de baja lo agrega SendGrid automáticamente (subscription tracking)."""
-    seguro = _html.escape(cuerpo or "").replace("\n", "<br>")
+    Los enlaces con etiqueta [texto](url) se vuelven botones. El link de baja lo
+    agrega SendGrid automáticamente (subscription tracking)."""
+    # 1) Sacar los enlaces [texto](url) antes de escapar (para no romper la url) y
+    #    dejar un marcador temporal en su lugar.
+    botones = []
+
+    def _guardar(m):
+        botones.append(_boton(m.group(1), m.group(2)))
+        return f"\x00{len(botones) - 1}\x00"
+
+    texto = _ENLACE_MD.sub(_guardar, cuerpo or "")
+    # 2) Escapar el resto del texto y respetar los saltos de línea.
+    seguro = _html.escape(texto).replace("\n", "<br>")
+    # 3) Reinsertar los botones ya armados.
+    for i, btn in enumerate(botones):
+        seguro = seguro.replace(f"\x00{i}\x00", btn)
     logo = (
         f'<img src="cid:{LOGO_CID}" width="120" alt="Bragi Company" '
         f'style="display:block;margin:8px 0">' if con_logo else ""
