@@ -84,12 +84,19 @@ def inicio():
     orden_pipeline = ["nuevo", "calificado", "contactado", "respondió",
                       "negociando", "cerrado", "descartado"]
     pipeline = [(e, por_estado.get(e, 0)) for e in orden_pipeline if por_estado.get(e, 0)]
+    # Embudo: todas las etapas en orden (incluye las que están en 0) para ver el flujo.
+    embudo = [(e, por_estado.get(e, 0)) for e in orden_pipeline]
+    embudo_max = max([n for _, n in embudo] + [1])
     return render_template(
         "inicio.html",
         total_venues=total_venues,
         pipeline=pipeline,
+        embudo=embudo,
+        embudo_max=embudo_max,
         por_artista=por_artista,
         msg_estados=msg_estados,
+        metricas=database.metricas_correos(),
+        comparacion=database.comparacion_ab(),
         enviados_semana=database.contar_enviados_recientes(7),
         recordatorios=database.listar_recordatorios()[:6],
         seguimiento_conteos=cadencia.conteos(),

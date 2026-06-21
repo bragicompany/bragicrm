@@ -23,6 +23,16 @@
       <div class="sub2">{{ msg_estados.get('aprobado', 0) }} aprobados · {{ msg_estados.get('enviado', 0) }} enviados</div>
     </div>
     <div class="card">
+      <h3>% de apertura</h3>
+      <div class="big">{{ metricas.pct_apertura }}%</div>
+      <div class="sub2">{{ metricas.abiertos }} de {{ metricas.enviados }} enviados</div>
+    </div>
+    <div class="card">
+      <h3>% de respuesta</h3>
+      <div class="big">{{ metricas.pct_respuesta }}%</div>
+      <div class="sub2">{{ metricas.respondidos }} de {{ metricas.enviados }} enviados</div>
+    </div>
+    <div class="card">
       <h3>Follow-ups que tocan hoy</h3>
       <div class="big">{{ seguimiento_conteos.toca }}</div>
       <div class="sub2"><a class="fila" href="{{ url_for('seguimientos') }}">Ver seguimientos →</a></div>
@@ -34,19 +44,64 @@
     </div>
   </div>
 
-  <!-- Pipeline -->
+  <div style="font-size:12px;color:#9ca3af;margin:-6px 0 8px">
+    Apertura y respuesta se marcan a mano por ahora (botones en la ficha). El tracking
+    automático llega con SendGrid en la nube.
+  </div>
+
+  <!-- Embudo (funnel) -->
   <div class="card" style="margin-bottom:14px">
-    <h3>Venues por estado del pipeline</h3>
-    {% if pipeline %}
-      <div class="pills">
-        {% for estado, n in pipeline %}
-          <a class="pill" href="{{ url_for('lista', estado_pipeline=estado) }}">
-            <span class="chip est-{{ estado }}">{{ estado }}</span> <b>{{ n }}</b>
+    <h3>Embudo de ventas (venues por etapa)</h3>
+    {% if total_venues %}
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+        {% for estado, n in embudo %}
+          <a href="{{ url_for('lista', estado_pipeline=estado) }}"
+             style="display:flex;align-items:center;gap:10px;text-decoration:none;color:#111">
+            <span style="width:96px;font-size:13px;color:#374151;text-align:right">{{ estado }}</span>
+            <span style="flex:1;background:#f1f3ec;border-radius:6px;height:22px;position:relative;overflow:hidden">
+              <span style="position:absolute;left:0;top:0;bottom:0;border-radius:6px;
+                           background:var(--lima);width:{{ (100 * n / embudo_max)|round(0,'floor') }}%;
+                           min-width:{{ 2 if n else 0 }}px"></span>
+            </span>
+            <b style="width:34px;text-align:right">{{ n }}</b>
           </a>
         {% endfor %}
       </div>
     {% else %}
       <div class="sub2">Aún no hay venues. Corre el buscador para empezar.</div>
+    {% endif %}
+  </div>
+
+  <!-- Comparación A/B -->
+  <div class="card" style="margin-bottom:14px">
+    <h3>Comparación A/B (qué combinación funciona mejor)</h3>
+    {% if comparacion %}
+      <table style="box-shadow:none">
+        <thead>
+          <tr><th>Origen</th><th>Idioma</th><th>Cuerpo</th><th>Asunto</th>
+              <th>Enviados</th><th>Abiertos</th><th>Respondidos</th><th>% resp.</th></tr>
+        </thead>
+        <tbody>
+          {% for c in comparacion %}
+            <tr>
+              <td>{{ c.origen }}</td>
+              <td>{{ (c.idioma or '—')|upper }}</td>
+              <td>{{ c.version or '—' }}</td>
+              <td>{{ c.asunto_variante or '—' }}</td>
+              <td>{{ c.enviados }}</td>
+              <td>{{ c.abiertos }}</td>
+              <td>{{ c.respondidos }}</td>
+              <td><b>{{ c.pct_respuesta }}%</b></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="sub2" style="margin-top:8px">
+        Cuerpo A/B y asunto 1–4 son las combinaciones de plantilla. Mientras tengas pocos
+        envíos, los % bailan mucho — cobran sentido con volumen.
+      </div>
+    {% else %}
+      <div class="sub2">Aún no hay correos enviados. Cuando envíes, aquí verás qué combinación responde mejor.</div>
     {% endif %}
   </div>
 

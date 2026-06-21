@@ -511,6 +511,59 @@ def venues_calificados_sin_email():
     return filas
 
 
+def metricas_correos():
+    """Números de desempeño sobre los correos ENVIADOS: cuántos se abrieron y
+    cuántos respondieron, con sus porcentajes. (Apertura/respuesta se marcan a mano
+    por ahora; el tracking automático de SendGrid llega en la nube.)"""
+    conn = conectar()
+    fila = conn.execute(
+        """SELECT COUNT(*) AS enviados,
+                  COALESCE(SUM(abierto), 0) AS abiertos,
+                  COALESCE(SUM(respondido), 0) AS respondidos
+           FROM mensajes WHERE estado = 'enviado'"""
+    ).fetchone()
+    conn.close()
+    enviados = fila["enviados"] or 0
+    abiertos = fila["abiertos"] or 0
+    respondidos = fila["respondidos"] or 0
+    pct = lambda n: round(100 * n / enviados) if enviados else 0
+    return {
+        "enviados": enviados, "abiertos": abiertos, "respondidos": respondidos,
+        "pct_apertura": pct(abiertos), "pct_respuesta": pct(respondidos),
+    }
+
+
+def comparacion_ab():
+    """Compara resultados por COMBINACIÓN usada (origen · idioma · cuerpo · asunto).
+    Para cada combinación: enviados, abiertos, respondidos y % de respuesta.
+    Ordenado por % de respuesta (mejores primero). Solo cuenta correos enviados."""
+    conn = conectar()
+    filas = conn.execute(
+        """SELECT COALESCE(origen, 'ia') AS origen,
+                  idioma, version, asunto_variante,
+                  COUNT(*) AS enviados,
+                  COALESCE(SUM(abierto), 0) AS abiertos,
+                  COALESCE(SUM(respondido), 0) AS respondidos
+           FROM mensajes
+           WHERE estado = 'enviado'
+           GROUP BY origen, idioma, version, asunto_variante
+           ORDER BY enviados DESC"""
+    ).fetchall()
+    conn.close()
+    salida = []
+    for f in filas:
+        env = f["enviados"] or 0
+        salida.append({
+            "origen": f["origen"], "idioma": f["idioma"],
+            "version": f["version"], "asunto_variante": f["asunto_variante"],
+            "enviados": env, "abiertos": f["abiertos"], "respondidos": f["respondidos"],
+            "pct_apertura": round(100 * f["abiertos"] / env) if env else 0,
+            "pct_respuesta": round(100 * f["respondidos"] / env) if env else 0,
+        })
+    salida.sort(key=lambda r: (r["pct_respuesta"], r["enviados"]), reverse=True)
+    return salida
+
+
 def contar_enviados_recientes(dias=7):
     """Cuántos correos se han enviado en los últimos N días (para vigilar la rampa)."""
     corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
