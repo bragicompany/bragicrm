@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Cola de llamada — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <h1 style="margin-top:6px">Cola de llamada</h1>
+  <div style="color:#6b7280;font-size:14px;margin-bottom:18px">
+    Venues para <strong>gestión manual</strong> (llamada / WhatsApp / visita): o agotaron los
+    correos sin responder, o no tienen email. La app te los pone en cola con sus datos —
+    tú decides cómo y cuándo contactarlos.
+  </div>
+
+  {% if items %}
+    <table>
+      <thead>
+        <tr><th>Venue</th><th>Artista</th><th>Por qué está aquí</th><th>Contacto</th></tr>
+      </thead>
+      <tbody>
+        {% for v, motivo in items %}
+          <tr>
+            <td><a class="fila" href="{{ url_for('ficha', venue_id=v.id) }}">{{ v.nombre }}</a>
+              <div style="font-size:12px;color:#9ca3af">{{ v.ciudad or '' }}{% if v.estado %}, {{ v.estado }}{% endif %}</div>
+            </td>
+            <td>{% if v.artista %}<span class="chip art-{{ v.artista }}">{{ v.artista }}</span>{% else %}—{% endif %}</td>
+            <td style="font-size:13px;color:#374151">{{ motivo }}</td>
+            <td>
+              {% set tel = enlace_llamada(v.telefono) %}
+              {% set wa = enlace_whatsapp(v.telefono) %}
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                {% if tel %}<a class="btn gris" href="{{ tel }}">📞 Llamar</a>{% endif %}
+                {% if wa %}<a class="btn gris" href="{{ wa }}" target="_blank" rel="noopener">💬 WhatsApp</a>{% endif %}
+                {% if not tel and not wa %}<span style="font-size:13px;color:#9ca3af">sin teléfono</span>{% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">
+      Cuando hables con ellos, registra la llamada/WhatsApp en la línea de tiempo de su ficha
+      (así sale de aquí si lo calificas, cierras o descartas).
+    </div>
+  {% else %}
+    <div class="vacio">La cola está vacía. Nada pendiente de gestión manual. 🎉</div>
+  {% endif %}
+
+{% endblock %}

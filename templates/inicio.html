@@ -22,6 +22,16 @@
       <div class="big">{{ msg_estados.get('borrador', 0) }}</div>
       <div class="sub2">{{ msg_estados.get('aprobado', 0) }} aprobados · {{ msg_estados.get('enviado', 0) }} enviados</div>
     </div>
+    <div class="card">
+      <h3>Follow-ups que tocan hoy</h3>
+      <div class="big">{{ seguimiento_conteos.toca }}</div>
+      <div class="sub2"><a class="fila" href="{{ url_for('seguimientos') }}">Ver seguimientos →</a></div>
+    </div>
+    <div class="card">
+      <h3>En cola de llamada</h3>
+      <div class="big">{{ seguimiento_conteos.cola }}</div>
+      <div class="sub2"><a class="fila" href="{{ url_for('cola') }}">Ver cola →</a></div>
+    </div>
   </div>
 
   <!-- Pipeline -->

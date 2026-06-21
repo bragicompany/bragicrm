@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Seguimientos — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <h1 style="margin-top:6px">Seguimientos (follow-ups)</h1>
+  <div style="color:#6b7280;font-size:14px;margin-bottom:18px">
+    Cadencia correo-primero: <strong>día 0</strong> primer correo ·
+    <strong>día 4</strong> follow-up 1 · <strong>día 9</strong> follow-up 2.
+    Si tras el día 9 no responden, pasan a la <a class="fila" href="{{ url_for('cola') }}">cola de llamada →</a>
+  </div>
+
+  <!-- TOCA HOY -->
+  <h2 style="font-size:18px;margin-bottom:8px">⏰ Les toca follow-up ({{ toca|length }})</h2>
+  {% if toca %}
+    <table>
+      <thead>
+        <tr><th>Venue</th><th>Artista</th><th>Sin responder</th><th>Toca</th><th>Generar borrador</th></tr>
+      </thead>
+      <tbody>
+        {% for v, info in toca %}
+          <tr>
+            <td><a class="fila" href="{{ url_for('ficha', venue_id=v.id) }}">{{ v.nombre }}</a>
+              <div style="font-size:12px;color:#9ca3af">{{ v.ciudad or '' }}{% if v.email %} · {{ v.email.split(',')[0].strip() }}{% endif %}</div>
+            </td>
+            <td>{% if v.artista %}<span class="chip art-{{ v.artista }}">{{ v.artista }}</span>{% else %}—{% endif %}</td>
+            <td>{% if info.dias is not none %}{{ info.dias }} días{% else %}—{% endif %}<br>
+              <span style="font-size:12px;color:#9ca3af">{{ v.num_enviados }} correo(s) enviado(s)</span>
+            </td>
+            <td><strong>Follow-up #{{ info.follow }}</strong></td>
+            <td>
+              <form method="post" action="{{ url_for('generar_seguimiento', venue_id=v.id) }}" style="display:flex;gap:6px;flex-wrap:wrap">
+                <input type="hidden" name="numero" value="{{ info.follow }}">
+                <input type="hidden" name="modo" value="plantilla">
+                <button class="btn" type="submit" title="Texto fijo, gratis">📄 Plantilla</button>
+                <button class="btn gris" type="submit" name="modo" value="ia" title="Genera cobro">$ ✍️ IA</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:#9ca3af;margin-top:6px">
+      El borrador queda en la ficha del venue para que lo revises, apruebes y envíes. Nada se manda solo.
+    </div>
+  {% else %}
+    <div class="vacio">Nadie con follow-up pendiente hoy. 🎉</div>
+  {% endif %}
+
+  <!-- ESPERANDO -->
+  <h2 style="font-size:18px;margin:26px 0 8px">⌛ En espera ({{ esperando|length }})</h2>
+  {% if esperando %}
+    <table>
+      <thead>
+        <tr><th>Venue</th><th>Artista</th><th>Desde el último correo</th><th>Próximo follow-up</th></tr>
+      </thead>
+      <tbody>
+        {% for v, info in esperando %}
+          <tr>
+            <td><a class="fila" href="{{ url_for('ficha', venue_id=v.id) }}">{{ v.nombre }}</a></td>
+            <td>{% if v.artista %}<span class="chip art-{{ v.artista }}">{{ v.artista }}</span>{% else %}—{% endif %}</td>
+            <td>{% if info.dias is not none %}{{ info.dias }} días{% else %}—{% endif %}</td>
+            <td>Follow-up #{{ info.follow }} {% if info.faltan %}— en {{ info.faltan }} día(s){% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="sub2" style="color:#9ca3af">Nadie esperando turno.</div>
+  {% endif %}
+
+{% endblock %}

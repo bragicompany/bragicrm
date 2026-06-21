@@ -22,6 +22,7 @@ import ai_email
 import plantillas
 import email_sender
 import enrich
+import cadencia
 
 app = Flask(__name__)
 
@@ -91,6 +92,7 @@ def inicio():
         msg_estados=msg_estados,
         enviados_semana=database.contar_enviados_recientes(7),
         recordatorios=database.listar_recordatorios()[:6],
+        seguimiento_conteos=cadencia.conteos(),
     )
 
 
@@ -299,6 +301,75 @@ def borrar_actividad(actividad_id):
 def agenda():
     recordatorios = database.listar_recordatorios()
     return render_template("agenda.html", recordatorios=recordatorios)
+
+
+@app.route("/seguimientos")
+def seguimientos():
+    """Cadencia (Fase 6A): a quién le toca follow-up hoy y quién está esperando."""
+    toca, esperando = cadencia.seguimientos()
+    return render_template(
+        "seguimientos.html",
+        toca=toca, esperando=esperando,
+        gap=cadencia.GAP_POR_NUMERO,
+    )
+
+
+@app.route("/cola")
+def cola():
+    """Cola de llamada (Fase 6A): venues para gestión manual (llamada/WhatsApp/visita)."""
+    items = cadencia.cola_llamada()
+    return render_template("cola.html", items=items)
+
+
+@app.route("/venue/<int:venue_id>/seguimiento", methods=["POST"])
+def generar_seguimiento(venue_id):
+    """Genera el borrador de un follow-up (por plantilla o IA) y lo deja en la ficha
+    para revisar/aprobar/enviar. Nada se envía solo."""
+    venue = database.obtener_venue(venue_id)
+    if venue is None:
+        abort(404)
+    destino = url_for("ficha", venue_id=venue_id)
+
+    artista = venue["artista"]
+    if not artista or not plantillas.tiene(artista):
+        return redirect(destino + "?correo_error=Asigna un artista con plantillas (Dani o Davikane).#correos")
+
+    idioma = request.form.get("idioma") or ""
+    try:
+        numero = int(request.form.get("numero", 1))
+    except (TypeError, ValueError):
+        numero = 1
+    modo = request.form.get("modo") or "plantilla"
+
+    try:
+        if modo == "ia":
+            # Reusa la IA con una instrucción de seguimiento breve.
+            instruccion = (
+                "Este es un CORREO DE SEGUIMIENTO (follow-up) a un primer correo que no fue "
+                "respondido. Hazlo MUY breve (50-90 palabras), cordial y sin presión: recuerda "
+                "amablemente el correo anterior y reitera la invitación a una fecha. No repitas "
+                "toda la bio."
+            )
+            b = ai_email.generar_borrador(venue, indice_gancho=0, instruccion=instruccion)
+            perfil = artistas.obtener(artista) or {}
+            database.agregar_mensaje(
+                venue_id=venue_id, asunto=b["asunto"], cuerpo=b["cuerpo"],
+                gancho=b["gancho"], modelo=b["modelo"],
+                origen="seguimiento", idioma=perfil.get("idioma_correo"),
+                version=f"F{numero}",
+            )
+        else:
+            b = plantillas.generar_seguimiento(artista, venue, idioma=idioma, numero=numero)
+            database.agregar_mensaje(
+                venue_id=venue_id, asunto=b["asunto"], cuerpo=b["cuerpo"],
+                modelo="plantilla v5 (seguimiento)", origen="seguimiento",
+                idioma=b["idioma"], version=f"F{b['numero']}",
+            )
+        return redirect(destino + "?correo_ok=1#correos")
+    except (ai_email.FaltaLlaveError, ai_email.GeneracionError) as e:
+        return redirect(destino + f"?correo_error={e}#correos")
+    except Exception as e:
+        return redirect(destino + f"?correo_error=No se pudo generar el seguimiento: {e}#correos")
 
 
 # Tipos de lugar -> (categoría A/B, plantilla de búsqueda para Google Places)

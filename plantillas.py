@@ -185,6 +185,66 @@ FIRMA = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Seguimientos (follow-ups). Cortos, sin presión. {artista} = nombre artístico.
+# numero 1 = recordatorio suave (día 4) · numero 2 = último toque (día 9).
+# ---------------------------------------------------------------------------
+
+SEGUIMIENTOS = {
+    "en": {
+        1: {
+            "asunto": "following up — [venue]",
+            "cuerpo": (
+                "{saludo}\n\n"
+                "Just following up on our note about {artista} for [venue] — we know inboxes "
+                "get busy. If a live date could be a fit, we'd be glad to find a slot that works "
+                "for you.\n\n"
+                "Here's the brochure and live video again, in case it's handy: [LINK]\n\n"
+                "Even a quick yes/no helps. Thanks for your time.\n\n"
+                "{firma}"
+            ),
+        },
+        2: {
+            "asunto": "last note — [venue]",
+            "cuerpo": (
+                "{saludo}\n\n"
+                "We'll keep this our last note so we're not crowding your inbox. If bringing "
+                "{artista} to [venue] isn't the right fit right now, no problem at all — just let "
+                "us know and we'll close the loop.\n\n"
+                "And if the timing is simply off, we're glad to circle back later.\n\n"
+                "{firma}"
+            ),
+        },
+    },
+    "es": {
+        1: {
+            "asunto": "seguimiento — [venue]",
+            "cuerpo": (
+                "{saludo}\n\n"
+                "Solo damos seguimiento a nuestro correo sobre {artista} para [venue] —sabemos que "
+                "las bandejas se llenan—. Si una fecha en vivo les cuadra, con gusto buscamos un día "
+                "que les funcione.\n\n"
+                "Les dejamos de nuevo el brochure y el video en vivo, por si les sirve: [LINK]\n\n"
+                "Con un sí o no rápido nos basta. Gracias por su tiempo.\n\n"
+                "{firma}"
+            ),
+        },
+        2: {
+            "asunto": "último correo — [venue]",
+            "cuerpo": (
+                "{saludo}\n\n"
+                "Este será nuestro último correo para no saturar su bandeja. Si traer a {artista} a "
+                "[venue] no es el momento, no hay problema —nos dicen y cerramos el tema—.\n\n"
+                "Y si es solo cuestión de fechas, con gusto retomamos más adelante.\n\n"
+                "{firma}"
+            ),
+        },
+    },
+}
+
+NUMEROS_SEGUIMIENTO = (1, 2)
+
+
 def tiene(artista):
     """¿Hay plantillas para este artista?"""
     return artista in PLANTILLAS
@@ -277,6 +337,51 @@ def generar(artista, venue, idioma="en", version="A", asunto_indice=0):
         "idioma": idioma,
         "version": version,
         "asunto_variante": str(asunto_indice + 1),  # 1..4, legible para comparar
+        "artista": artista,
+        "brochure_falta": brochure_falta,
+    }
+
+
+def generar_seguimiento(artista, venue, idioma="en", numero=1):
+    """Rellena una plantilla de SEGUIMIENTO (follow-up). Mismo relleno que generar()
+    pero con los textos cortos de SEGUIMIENTOS. Devuelve dict listo para guardar."""
+    if not tiene(artista):
+        raise ValueError(f"No hay plantillas para el artista '{artista}'.")
+
+    venue = dict(venue)
+    idioma = _normalizar_idioma(idioma, artista)
+    numero = numero if numero in NUMEROS_SEGUIMIENTO else 1
+    bloque = SEGUIMIENTOS[idioma][numero]
+
+    venue_nombre = (venue.get("nombre") or "el venue").strip()
+    perfil = artistas.obtener(artista) or {}
+    nombre_artistico = perfil.get("nombre_artistico", artista)
+    brochure = brochure_de(artista)
+    brochure_falta = brochure is None
+    saludo = _saludo(idioma, venue.get("encargado"), venue_nombre)
+    firma = FIRMA[idioma]
+
+    if brochure_falta:
+        link = BROCHURE_PENDIENTE
+    else:
+        etiqueta = (f"View {nombre_artistico}'s brochure & video"
+                    if idioma == "en" else f"Ver el brochure de {nombre_artistico}")
+        link = f"[{etiqueta}]({brochure})"
+
+    def rellenar(texto):
+        return (
+            texto.replace("{saludo}", saludo)
+            .replace("[venue]", venue_nombre)
+            .replace("{artista}", nombre_artistico)
+            .replace("[LINK]", link)
+            .replace("{firma}", firma)
+        )
+
+    return {
+        "asunto": rellenar(bloque["asunto"]),
+        "cuerpo": rellenar(bloque["cuerpo"]),
+        "idioma": idioma,
+        "numero": numero,
         "artista": artista,
         "brochure_falta": brochure_falta,
     }

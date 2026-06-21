@@ -187,6 +187,29 @@
         pintar();
       })();
     </script>
+
+    <!-- SEGUIMIENTO (follow-up): para recordar tras el día 4 / día 9 -->
+    <form method="post" action="{{ url_for('generar_seguimiento', venue_id=v.id) }}" class="form-actividad" style="background:#fafbf6">
+      <div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-transform:none;font-weight:400">
+        ↪︎ <strong>Seguimiento</strong> (cuando no responden): recordatorio corto que reusa el brochure.
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <label>Idioma
+          <select name="idioma">
+            <option value="en" {% if idioma_default=='en' %}selected{% endif %}>Inglés (EN)</option>
+            <option value="es" {% if idioma_default=='es' %}selected{% endif %}>Español (ES)</option>
+          </select>
+        </label>
+        <label>Follow-up
+          <select name="numero">
+            <option value="1">#1 (día 4)</option>
+            <option value="2">#2 (día 9 · último toque)</option>
+          </select>
+        </label>
+        <button class="btn" type="submit" name="modo" value="plantilla">📄 Generar seguimiento</button>
+        <button class="btn gris" type="submit" name="modo" value="ia" title="Genera cobro">$ ✍️ con IA</button>
+      </div>
+    </form>
     {% elif not v.artista %}
       <div style="color:#b45309;font-size:14px">Asigna un <strong>artista</strong> a este venue (arriba) para poder generar el correo.</div>
     {% endif %}
@@ -229,7 +252,11 @@
           <div class="evento" style="border-left-color:{% if m.estado=='enviado' %}#1d4ed8{% elif m.estado=='aprobado' %}#0a7d40{% else %}#2b4eff{% endif %}">
             <div class="evento-cab">
               <span class="chip est-{{ m.estado }}">{{ m.estado }}</span>
-              {% if m.origen == 'plantilla' %}
+              {% if m.origen == 'seguimiento' %}
+                <span style="font-size:12px;color:#374151;background:#fef3c7;border-radius:10px;padding:1px 8px">
+                  ↪︎ seguimiento {{ m.version or '' }}{% if m.idioma %} · {{ m.idioma|upper }}{% endif %}
+                </span>
+              {% elif m.origen == 'plantilla' %}
                 <span style="font-size:12px;color:#374151;background:#ecfccb;border-radius:10px;padding:1px 8px">
                   📄 plantilla · {{ (m.idioma or '?')|upper }} · cuerpo {{ m.version or '?' }} · asunto {{ m.asunto_variante or '?' }}
                 </span>

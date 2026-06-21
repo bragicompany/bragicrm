@@ -459,6 +459,42 @@ def contar_por(columna, tabla="venues"):
     return {f["k"]: f["c"] for f in filas}
 
 
+def venues_contactados_con_envios():
+    """Venues en estado 'contactado' (ya se les escribió, aún no responden) con un
+    resumen de sus correos enviados: cuántos y la fecha del último. Para la cadencia
+    de follow-ups (Fase 6). No modifica nada: solo lee."""
+    conn = conectar()
+    filas = conn.execute(
+        """
+        SELECT v.*,
+               SUM(CASE WHEN m.estado = 'enviado' THEN 1 ELSE 0 END) AS num_enviados,
+               MAX(CASE WHEN m.estado = 'enviado' THEN m.fecha_envio END) AS ultimo_envio
+        FROM venues v
+        LEFT JOIN mensajes m ON m.venue_id = v.id
+        WHERE v.estado_pipeline = 'contactado'
+        GROUP BY v.id
+        HAVING num_enviados > 0
+        ORDER BY ultimo_envio ASC
+        """
+    ).fetchall()
+    conn.close()
+    return filas
+
+
+def venues_calificados_sin_email():
+    """Venues ya calificados (sirven) pero SIN correo: no se pueden contactar por
+    email, así que van directo a gestión manual (cola de llamada)."""
+    conn = conectar()
+    filas = conn.execute(
+        """SELECT * FROM venues
+           WHERE estado_pipeline = 'calificado'
+             AND (email IS NULL OR email = '')
+           ORDER BY created_at DESC"""
+    ).fetchall()
+    conn.close()
+    return filas
+
+
 def contar_enviados_recientes(dias=7):
     """Cuántos correos se han enviado en los últimos N días (para vigilar la rampa)."""
     corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
