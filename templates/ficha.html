@@ -54,6 +54,26 @@
     <div class="val">{{ v.created_at }}</div>
   </div>
 
+  <!-- FASE 2: buscar contacto en la web del venue -->
+  <div class="panel-decision">
+    <div>
+      <strong>🔎 Buscar contacto en su web</strong>
+      <div style="font-size:13px;color:#6b7280">
+        Entra a la web del venue y rellena solo el correo / página de booking / redes
+        (útil cuando Google no trae el correo pero la web sí). Tarda unos segundos.
+      </div>
+      {% if enriq_ok %}<div class="aviso-ok" style="margin-top:8px">✓ {{ enriq_ok }}</div>{% endif %}
+      {% if enriq_error %}<div class="aviso-error" style="margin-top:8px">⚠ {{ enriq_error }}</div>{% endif %}
+    </div>
+    {% if v.web %}
+      <form method="post" action="{{ url_for('enriquecer_venue', venue_id=v.id) }}">
+        <button class="btn" type="submit">🔎 Buscar correo en su web</button>
+      </form>
+    {% else %}
+      <span style="color:#9ca3af;font-size:14px">Sin web — agrégala abajo para poder buscar.</span>
+    {% endif %}
+  </div>
+
   <!-- Formulario editable -->
   <form method="post" action="{{ url_for('guardar', venue_id=v.id) }}">
     <div class="form-grid">

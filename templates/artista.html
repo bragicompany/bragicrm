@@ -43,10 +43,14 @@
   </div>
 
   <!-- Venues de este artista -->
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
     <h3 style="margin:0">Venues de {{ nombre }} ({{ total }})</h3>
-    <div style="font-size:13px;color:#6b7280">
-      ✓ {{ con_email }} con correo ·
+    <div style="font-size:13px;color:#6b7280;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      ✓ {{ con_email }} con correo
+      <form method="post" action="{{ url_for('enriquecer_artista', nombre=nombre) }}"
+            onsubmit="return confirm('Voy a entrar a la web de los venues que aún no se han enriquecido (hasta 15 por tanda). Puede tardar uno o dos minutos. ¿Seguir?')">
+        <button class="btn gris" type="submit">🔎 Buscar correos en sus webs</button>
+      </form>
       <a class="fila" href="{{ url_for('lista', artista=nombre) }}">Ver con todos los filtros →</a>
     </div>
   </div>

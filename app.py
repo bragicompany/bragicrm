@@ -21,6 +21,7 @@ import artistas
 import ai_email
 import plantillas
 import email_sender
+import enrich
 
 app = Flask(__name__)
 
@@ -167,6 +168,8 @@ def ficha(venue_id):
         enviados_semana=database.contar_enviados_recientes(7),
         correo_ok=request.args.get("correo_ok"),
         correo_error=request.args.get("correo_error"),
+        enriq_ok=request.args.get("enriq_ok"),
+        enriq_error=request.args.get("enriq_error"),
     )
 
 
@@ -200,6 +203,73 @@ def decidir(venue_id):
     if nuevo_estado:
         database.actualizar_venue(venue_id, {"estado_pipeline": nuevo_estado})
     return redirect(url_for("ficha", venue_id=venue_id))
+
+
+@app.route("/venue/<int:venue_id>/enriquecer", methods=["POST"])
+def enriquecer_venue(venue_id):
+    """Fase 2: entra a la web del venue y busca correo / página de booking / redes.
+    Rellena solo esos campos del venue (no borra lo que ya tengas escrito a mano)."""
+    venue = database.obtener_venue(venue_id)
+    if venue is None:
+        abort(404)
+    destino = url_for("ficha", venue_id=venue_id)
+    if not venue["web"]:
+        return redirect(destino + "?enriq_error=Este venue no tiene sitio web; agrégalo abajo primero.")
+    try:
+        datos = enrich.enriquecer_uno(venue)
+        # No pisar con vacío lo que ya exista: solo guardar lo que se encontró.
+        encontrado = {k: v for k, v in datos.items() if k == "enriquecido_el" or v}
+        database.actualizar_venue(venue_id, encontrado)
+        partes = []
+        if datos.get("email"):
+            partes.append("correo (" + datos["email"] + ")")
+        if datos.get("pagina_booking"):
+            partes.append("página de booking")
+        if datos.get("redes"):
+            partes.append("redes")
+        if partes:
+            msg = "Encontrado: " + ", ".join(partes) + ". Revísalo abajo."
+        else:
+            msg = "No se encontró correo en su web (puede estar tras un formulario). Revisa la página de booking a mano."
+        return redirect(destino + f"?enriq_ok={msg}")
+    except Exception as e:
+        return redirect(destino + f"?enriq_error=No se pudo leer la web: {e}")
+
+
+# Cuántos venues enriquecer como máximo por tanda (para no dejar la página colgada).
+MAX_ENRIQUECER_LOTE = 15
+
+
+@app.route("/artista/<nombre>/enriquecer", methods=["POST"])
+def enriquecer_artista(nombre):
+    """Fase 2 en lote: enriquece los venues de este artista que tengan web y aún no
+    se hayan enriquecido (hasta MAX_ENRIQUECER_LOTE por tanda)."""
+    perfil = artistas.obtener(nombre)
+    if perfil is None:
+        abort(404)
+    destino = url_for("artista", nombre=nombre)
+    venues = database.listar_venues(artista=nombre)
+    pendientes = [v for v in venues if v["web"] and not v["enriquecido_el"]]
+    if not pendientes:
+        return redirect(destino + "?ok=No hay venues con web pendientes de enriquecer.")
+
+    tanda = pendientes[:MAX_ENRIQUECER_LOTE]
+    con_email = 0
+    for v in tanda:
+        try:
+            datos = enrich.enriquecer_uno(v)
+            encontrado = {k: val for k, val in datos.items() if k == "enriquecido_el" or val}
+            database.actualizar_venue(v["id"], encontrado)
+            if datos.get("email"):
+                con_email += 1
+        except Exception:
+            # Si una web falla, seguimos con las demás (no abortamos toda la tanda).
+            database.actualizar_venue(v["id"], {"enriquecido_el": date.today().isoformat()})
+    restantes = len(pendientes) - len(tanda)
+    msg = f"Enriquecidos {len(tanda)} venues: {con_email} quedaron con correo."
+    if restantes:
+        msg += f" Quedan {restantes} — vuelve a darle al botón para seguir."
+    return redirect(destino + f"?ok={msg}")
 
 
 @app.route("/venue/<int:venue_id>/actividad", methods=["POST"])
