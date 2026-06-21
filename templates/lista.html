@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Venues — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <form class="filtros" method="get" action="{{ url_for('lista') }}">
+    <div style="flex:1;min-width:180px">
+      <label>Buscar por nombre</label>
+      <input type="text" name="q" value="{{ seleccion.q }}" placeholder="ej. Crazy Bull"
+             style="width:100%;padding:7px 10px;border:1px solid var(--linea);border-radius:8px;font-size:14px">
+    </div>
+    <div>
+      <label>Artista</label>
+      <select name="artista" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for a in filtros.artistas %}
+          <option value="{{ a }}" {% if seleccion.artista == a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Ciudad</label>
+      <select name="ciudad" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for c in filtros.ciudades %}
+          <option value="{{ c }}" {% if seleccion.ciudad == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Categoria</label>
+      <select name="categoria" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for c in filtros.categorias %}
+          <option value="{{ c }}" {% if seleccion.categoria == c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Estado (pipeline)</label>
+      <select name="estado_pipeline" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for e in filtros.estados_pipeline %}
+          <option value="{{ e }}" {% if seleccion.estado_pipeline == e %}selected{% endif %}>{{ e }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label>Email</label>
+      <select name="email" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        <option value="si" {% if seleccion.email == 'si' %}selected{% endif %}>✓ Con correo</option>
+        <option value="no" {% if seleccion.email == 'no' %}selected{% endif %}>Sin correo</option>
+      </select>
+    </div>
+    <button class="btn" type="submit">Filtrar</button>
+    <a class="btn gris" href="{{ url_for('lista') }}">Limpiar</a>
+  </form>
+
+  <div class="conteo">{{ venues|length }} venue(s)</div>
+
+  {% if venues %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Ciudad</th>
+          <th>Cat.</th>
+          <th>Artista</th>
+          <th>Email</th>
+          <th>Telefono</th>
+          <th>Google</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for v in venues %}
+          <tr>
+            <td><a class="fila" href="/venue/{{ v.id }}">{{ v.nombre }}</a></td>
+            <td>{{ v.ciudad or "—" }}{% if v.estado %}, {{ v.estado }}{% endif %}</td>
+            <td>{% if v.categoria %}<span class="chip cat-{{ v.categoria }}">{{ v.categoria }}</span>{% else %}—{% endif %}</td>
+            <td>{% if v.artista %}<span class="chip art-{{ v.artista }}">{{ v.artista }}</span>{% else %}—{% endif %}</td>
+            <td>{% if v.email %}<span title="{{ v.email }}" style="color:#0a7d40;font-weight:700">✓</span>{% else %}<span style="color:#cbd5e1">—</span>{% endif %}</td>
+            <td>{{ v.telefono or "—" }}</td>
+            <td>
+              {% set g = enlace_google(v.place_id, v.nombre) %}
+              {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google ↗</a>{% else %}—{% endif %}
+            </td>
+            <td><span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="vacio">
+      <p>Todavia no hay venues que coincidan.</p>
+      <p style="font-size:13px">Corre el buscador en la terminal, por ejemplo:<br>
+      <code>python3 places_search.py --query "salas de conciertos en Pharr, TX" --artista Davikane --categoria A --ciudad Pharr --estado TX</code></p>
+    </div>
+  {% endif %}
+
+{% endblock %}

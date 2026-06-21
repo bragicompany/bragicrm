@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}CRM Bragi{% endblock %}</title>
+  <style>
+    :root {
+      --lima:#c7f000; --lima-d:#b2d800; --tinta:#0e0e0e;
+      --enlace:#0a7d40; --gris:#6b7280; --linea:#e6e7e2; --fondo:#f5f6f1;
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:var(--fondo); color:#111; }
+
+    /* --- Header + navegación --- */
+    header { background:var(--tinta); color:#fff; padding:0 20px; display:flex; align-items:center;
+             gap:24px; box-shadow:0 2px 10px rgba(0,0,0,.15); }
+    header .logo { display:flex; align-items:center; gap:9px; font-weight:800; font-size:18px;
+                   letter-spacing:.5px; padding:14px 0; }
+    header .logo .mark { width:18px; height:18px; border-radius:50%;
+                         background:var(--lima); box-shadow:inset 0 0 0 3px var(--tinta), 0 0 0 2px var(--lima); }
+    header .logo .lite { color:var(--lima); }
+    header nav { display:flex; gap:4px; }
+    header nav a { color:#e8e8e8; text-decoration:none; font-weight:600; font-size:14px;
+                   padding:8px 14px; border-radius:8px; }
+    header nav a:hover { background:rgba(199,240,0,.15); color:var(--lima); }
+    header .sub { color:#888; font-weight:400; font-size:12px; margin-left:auto; }
+
+    .contenedor { max-width:1100px; margin:0 auto; padding:22px 20px; }
+
+    /* --- Tablas --- */
+    table { width:100%; border-collapse:collapse; background:#fff; border-radius:10px; overflow:hidden;
+            box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--linea); font-size:14px; }
+    th { background:#fafbf6; color:var(--gris); font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
+    tr:hover td { background:#fbffe6; }
+    a.fila { color:#111; text-decoration:none; font-weight:700; }
+    a.fila:hover { color:var(--enlace); }
+
+    /* --- Chips / estados --- */
+    .chip { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; }
+    .chip.cat-A { background:#eef9c8; color:#5a6b00; }
+    .chip.cat-B { background:#fef3c7; color:#92400e; }
+    .chip.art-Dani { background:#fce7f3; color:#9d174d; }
+    .chip.art-Davikane { background:#dbeafe; color:#1e40af; }
+    .chip.estado { background:#eef2f7; color:#374151; }
+    .chip.est-nuevo { background:#f1f5f9; color:#475569; }
+    .chip.est-calificado { background:#e6f7ee; color:#0a7d40; }
+    .chip.est-descartado { background:#f3f4f6; color:#9ca3af; }
+    .chip.est-contactado { background:#eef9c8; color:#5a6b00; }
+    .chip.est-respondió { background:#fce7f3; color:#9d174d; }
+    .chip.est-negociando { background:#fff7ed; color:#c2410c; }
+    .chip.est-cerrado { background:#dcfce7; color:#15803d; }
+    .chip.est-borrador { background:#eef2f7; color:#374151; }
+    .chip.est-aprobado { background:#e6f7ee; color:#0a7d40; }
+    .chip.est-enviado  { background:#eef9c8; color:#5a6b00; }
+    .chip.canal-llamada { background:#e6f0ff; color:#1d4ed8; }
+    .chip.canal-whatsapp { background:#e6f7ee; color:#0a7d40; }
+    .chip.canal-reunion { background:#fef3c7; color:#92400e; }
+    .chip.canal-correo { background:#ede9fe; color:#6d28d9; }
+    .chip.canal-nota { background:#eef2f7; color:#374151; }
+
+    /* --- Botones --- */
+    .btn { padding:9px 16px; border:none; border-radius:8px; background:var(--lima); color:#111;
+           font-weight:700; cursor:pointer; font-size:14px; text-decoration:none; display:inline-block; }
+    .btn:hover { background:var(--lima-d); }
+    .btn.gris { background:#fff; color:#374151; border:1px solid var(--linea); }
+    .btn.gris:hover { background:#f3f4f6; }
+    .btn.verde { background:#0a7d40; color:#fff; }
+    .btn.verde:hover { background:#0b6b39; }
+    .btn.rojo { background:#b91c1c; color:#fff; }
+    .btn.rojo:hover { background:#a11717; }
+
+    /* --- Avisos --- */
+    .aviso-ok { background:#eef9c8; color:#5a6b00; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:14px; }
+    .aviso-error { background:#fef2f2; color:#b91c1c; padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:14px; }
+
+    /* --- Formularios --- */
+    .lbl-correo { display:flex; flex-direction:column; font-size:12px; color:var(--gris); font-weight:600; text-transform:uppercase; margin-bottom:10px; }
+    .lbl-correo input, .lbl-correo textarea { margin-top:5px; padding:8px 10px; border:1px solid var(--linea); border-radius:6px;
+        font-size:14px; font-weight:400; text-transform:none; color:#111; font-family:inherit; }
+    .lbl-correo textarea { resize:vertical; line-height:1.5; }
+    .panel-decision { display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+                      background:#fff; border:1px solid var(--linea); border-radius:10px; padding:14px 16px; margin-bottom:18px; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; background:#fff; padding:18px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .form-grid label { display:flex; flex-direction:column; font-size:12px; color:var(--gris); font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+    .form-grid label.ancho { grid-column:1 / -1; }
+    .form-grid input, .form-grid select, .form-grid textarea {
+        margin-top:5px; padding:8px 10px; border:1px solid var(--linea); border-radius:6px; font-size:14px;
+        font-weight:400; text-transform:none; letter-spacing:normal; color:#111; font-family:inherit; }
+    .form-grid textarea { resize:vertical; }
+    .acciones-rapidas { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+    .form-actividad { background:#fff; padding:16px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.06); margin-bottom:18px; }
+    .form-actividad label { display:flex; flex-direction:column; font-size:12px; color:var(--gris); font-weight:600; text-transform:uppercase; margin-bottom:10px; }
+    .form-actividad label.ancho { width:100%; }
+    .form-actividad input, .form-actividad select, .form-actividad textarea {
+        margin-top:5px; padding:8px 10px; border:1px solid var(--linea); border-radius:6px; font-size:14px;
+        font-weight:400; text-transform:none; color:#111; font-family:inherit; }
+    .form-actividad .fila-act { display:flex; gap:16px; }
+    .form-actividad .fila-act label { flex:1; }
+
+    /* --- Línea de tiempo --- */
+    .timeline { display:flex; flex-direction:column; gap:10px; }
+    .evento { background:#fff; border:1px solid var(--linea); border-left:4px solid var(--lima); border-radius:10px; padding:12px 14px; }
+    .evento-cab { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+    .evento-fecha { color:var(--gris); font-size:13px; }
+    .evento-txt { font-size:14px; margin-bottom:4px; }
+    .evento-meta { font-size:13px; color:#374151; }
+    .link-borrar { background:none; border:none; color:#bbb; cursor:pointer; font-size:14px; }
+    .link-borrar:hover { color:#b91c1c; }
+
+    /* --- Filtros --- */
+    .filtros { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:16px;
+               background:#fff; padding:14px 16px; border-radius:10px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .filtros label { display:block; font-size:11px; color:var(--gris); margin-bottom:3px; text-transform:uppercase; font-weight:600; }
+    .filtros select { padding:7px 10px; border:1px solid var(--linea); border-radius:8px; background:#fff; font-size:14px; }
+
+    .vacio { background:#fff; border-radius:10px; padding:40px; text-align:center; color:var(--gris); }
+    .conteo { color:var(--gris); font-size:13px; margin-bottom:12px; }
+
+    /* --- Ficha --- */
+    .ficha-grid { display:grid; grid-template-columns:200px 1fr; gap:0; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .ficha-grid .k { background:#fafbf6; color:var(--gris); padding:11px 14px; font-size:12px; text-transform:uppercase; border-bottom:1px solid var(--linea); font-weight:600; }
+    .ficha-grid .val { padding:11px 14px; border-bottom:1px solid var(--linea); font-size:15px; }
+    .ficha-grid .val a { color:var(--enlace); }
+    h1 { font-size:23px; margin:0 0 4px; }
+    h2 { color:#111; }
+    .volver { color:var(--gris); text-decoration:none; font-size:14px; }
+    .vacio-val { color:#bbb; }
+
+    /* --- Panel de inicio (dashboard) --- */
+    .saludo { font-size:24px; font-weight:800; margin:0 0 2px; }
+    .saludo .lima { color:#7a9400; }
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin:18px 0; }
+    .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 1px 3px rgba(0,0,0,.06); }
+    .card h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--gris); }
+    .card .big { font-size:34px; font-weight:800; line-height:1; }
+    .card .sub2 { color:var(--gris); font-size:13px; margin-top:4px; }
+    .card.destacada { background:var(--tinta); color:#fff; }
+    .card.destacada .big { color:var(--lima); }
+    .card.destacada h3 { color:#aaa; }
+    .pills { display:flex; flex-wrap:wrap; gap:8px; }
+    .pill { background:#f3f5ec; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:600; text-decoration:none; color:#111; display:inline-flex; gap:6px; align-items:center; }
+    .pill:hover { background:#eef9c8; }
+    .pill b { font-weight:800; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo"><span class="mark"></span> BRAGI <span class="lite">CRM</span></div>
+    <nav>
+      <a href="{{ url_for('inicio') }}">Inicio</a>
+      <a href="{{ url_for('lista') }}">Venues</a>
+      <a href="{{ url_for('artista', nombre='Dani') }}">Dani</a>
+      <a href="{{ url_for('artista', nombre='Davikane') }}">Davikane</a>
+      <a href="{{ url_for('agenda') }}">Agenda</a>
+    </nav>
+    <span class="sub">outreach de shows — Dani &amp; Davikane</span>
+  </header>
+  <div class="contenedor">
+    {% block contenido %}{% endblock %}
+  </div>
+</body>
+</html>

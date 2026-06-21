@@ -1,0 +1,9 @@
+# Ingredientes de Python que necesita la app.
+# Se instalan con:  pip install -r requirements.txt
+
+Flask==3.0.3          # el servidor web (la lista y la ficha)
+requests==2.32.3      # para hablar con Google Places
+python-dotenv==1.0.1  # para leer las llaves del archivo .env
+beautifulsoup4==4.12.3 # para leer el HTML de las webs de los venues (Fase 2)
+anthropic==0.69.0     # para escribir los borradores de correo con IA (Claude, Fase 4)
+sendgrid==6.11.0      # para enviar los correos aprobados (Fase 5)
