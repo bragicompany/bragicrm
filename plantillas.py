@@ -190,55 +190,66 @@ FIRMA = {
 # numero 1 = recordatorio suave (día 4) · numero 2 = último toque (día 9).
 # ---------------------------------------------------------------------------
 
+# Follow-up 1 (día 4): artista-específico, recuerda el beneficio de visibilidad.
+# Follow-up 2 (día 9): "break-up" cortés, IGUAL para ambos artistas.
+# Van como RESPUESTA en el mismo hilo (asunto "Re: <asunto original>") y SIN brochure.
 SEGUIMIENTOS = {
-    "en": {
-        1: {
-            "asunto": "following up — [venue]",
-            "cuerpo": (
+    1: {
+        "Davikane": {
+            "en": (
                 "{saludo}\n\n"
-                "Just following up on our note about {artista} for [venue] — we know inboxes "
-                "get busy. If a live date could be a fit, we'd be glad to find a slot that works "
-                "for you.\n\n"
-                "Here's the brochure and live video again, in case it's handy: [LINK]\n\n"
-                "Even a quick yes/no helps. Thanks for your time.\n\n"
+                "Floating this back up in case it got buried. One thing worth mentioning: "
+                "Davikane is getting steady media coverage right now, so a date at [venue] would "
+                "also put your spot in front of those audiences.\n\n"
+                "Worth a look for your lineup? Even a quick yes or no helps.\n\n"
+                "{firma}"
+            ),
+            "es": (
+                "{saludo}\n\n"
+                "Les reflotamos esto por si se traspapeló. Un detalle que vale la pena: Davikane "
+                "está teniendo buen movimiento en medios justo ahora, así que una fecha en [venue] "
+                "también pondría su lugar frente a esas audiencias.\n\n"
+                "¿Vale la pena para su programación? Con un sí o no rápido nos ayudan.\n\n"
                 "{firma}"
             ),
         },
-        2: {
-            "asunto": "last note — [venue]",
-            "cuerpo": (
+        "Dani": {
+            "en": (
                 "{saludo}\n\n"
-                "We'll keep this our last note so we're not crowding your inbox. If bringing "
-                "{artista} to [venue] isn't the right fit right now, no problem at all — just let "
-                "us know and we'll close the loop.\n\n"
-                "And if the timing is simply off, we're glad to circle back later.\n\n"
+                "Floating this back up in case it got buried. One thing worth mentioning: Dani "
+                "has a strong, active social media following, so a date at [venue] would also "
+                "bring real digital reach to your spot.\n\n"
+                "Worth a look for your lineup? Even a quick yes or no helps.\n\n"
+                "{firma}"
+            ),
+            "es": (
+                "{saludo}\n\n"
+                "Les reflotamos esto por si se traspapeló. Un detalle que vale la pena: Dani tiene "
+                "una comunidad fuerte y activa en redes, así que una fecha en [venue] también le "
+                "traería buen alcance digital a su lugar.\n\n"
+                "¿Vale la pena para su programación? Con un sí o no rápido nos ayudan.\n\n"
                 "{firma}"
             ),
         },
     },
-    "es": {
-        1: {
-            "asunto": "seguimiento — [venue]",
-            "cuerpo": (
-                "{saludo}\n\n"
-                "Solo damos seguimiento a nuestro correo sobre {artista} para [venue] —sabemos que "
-                "las bandejas se llenan—. Si una fecha en vivo les cuadra, con gusto buscamos un día "
-                "que les funcione.\n\n"
-                "Les dejamos de nuevo el brochure y el video en vivo, por si les sirve: [LINK]\n\n"
-                "Con un sí o no rápido nos basta. Gracias por su tiempo.\n\n"
-                "{firma}"
-            ),
-        },
-        2: {
-            "asunto": "último correo — [venue]",
-            "cuerpo": (
-                "{saludo}\n\n"
-                "Este será nuestro último correo para no saturar su bandeja. Si traer a {artista} a "
-                "[venue] no es el momento, no hay problema —nos dicen y cerramos el tema—.\n\n"
-                "Y si es solo cuestión de fechas, con gusto retomamos más adelante.\n\n"
-                "{firma}"
-            ),
-        },
+    2: {
+        "en": (
+            "{saludo}\n\n"
+            "I don't want to keep cluttering your inbox, so this will be my last note on this.\n\n"
+            "If the timing isn't right, no problem at all — just let me know and I'll close the "
+            "loop. And if it's worth a look down the road, the door's open whenever.\n\n"
+            "Either way, wishing you great shows ahead.\n\n"
+            "{firma}"
+        ),
+        "es": (
+            "{saludo}\n\n"
+            "No quiero seguir llenándoles la bandeja, así que este será mi último correo sobre "
+            "esto.\n\n"
+            "Si no es el momento, no hay problema — me avisan y lo cierro por ahora. Y si más "
+            "adelante vale la pena verlo, la puerta queda abierta cuando quieran.\n\n"
+            "De cualquier forma, les deseo grandes shows.\n\n"
+            "{firma}"
+        ),
     },
 }
 
@@ -342,46 +353,48 @@ def generar(artista, venue, idioma="en", version="A", asunto_indice=0):
     }
 
 
-def generar_seguimiento(artista, venue, idioma="en", numero=1):
-    """Rellena una plantilla de SEGUIMIENTO (follow-up). Mismo relleno que generar()
-    pero con los textos cortos de SEGUIMIENTOS. Devuelve dict listo para guardar."""
+def asunto_seguimiento(idioma, venue_nombre, asunto_previo=None):
+    """El follow-up va en el mismo hilo: 'Re: <asunto original>'. Si no se conoce el
+    asunto del primer correo, arma uno razonable con el nombre del venue."""
+    if asunto_previo:
+        base = asunto_previo.strip()
+        return base if base[:3].lower() == "re:" else f"Re: {base}"
+    return (f"Re: a show at {venue_nombre}?" if idioma == "en"
+            else f"Re: una fecha para {venue_nombre}?")
+
+
+def generar_seguimiento(artista, venue, idioma="en", numero=1, asunto_previo=None):
+    """Rellena una plantilla de SEGUIMIENTO (follow-up).
+
+    numero 1 = recordatorio + valor (artista-específico) · numero 2 = cierre cortés
+    (igual para ambos). No reenvía el brochure. El asunto va como 'Re:' del hilo
+    original (pasa 'asunto_previo' con el asunto del primer correo si lo conoces).
+    """
     if not tiene(artista):
         raise ValueError(f"No hay plantillas para el artista '{artista}'.")
 
     venue = dict(venue)
     idioma = _normalizar_idioma(idioma, artista)
     numero = numero if numero in NUMEROS_SEGUIMIENTO else 1
-    bloque = SEGUIMIENTOS[idioma][numero]
+
+    if numero == 1:
+        cuerpo_tpl = SEGUIMIENTOS[1][artista][idioma]
+    else:
+        cuerpo_tpl = SEGUIMIENTOS[2][idioma]
 
     venue_nombre = (venue.get("nombre") or "el venue").strip()
-    perfil = artistas.obtener(artista) or {}
-    nombre_artistico = perfil.get("nombre_artistico", artista)
-    brochure = brochure_de(artista)
-    brochure_falta = brochure is None
     saludo = _saludo(idioma, venue.get("encargado"), venue_nombre)
     firma = FIRMA[idioma]
 
-    if brochure_falta:
-        link = BROCHURE_PENDIENTE
-    else:
-        etiqueta = (f"View {nombre_artistico}'s brochure & video"
-                    if idioma == "en" else f"Ver el brochure de {nombre_artistico}")
-        link = f"[{etiqueta}]({brochure})"
-
-    def rellenar(texto):
-        return (
-            texto.replace("{saludo}", saludo)
-            .replace("[venue]", venue_nombre)
-            .replace("{artista}", nombre_artistico)
-            .replace("[LINK]", link)
-            .replace("{firma}", firma)
-        )
+    cuerpo = (cuerpo_tpl
+              .replace("{saludo}", saludo)
+              .replace("[venue]", venue_nombre)
+              .replace("{firma}", firma))
 
     return {
-        "asunto": rellenar(bloque["asunto"]),
-        "cuerpo": rellenar(bloque["cuerpo"]),
+        "asunto": asunto_seguimiento(idioma, venue_nombre, asunto_previo),
+        "cuerpo": cuerpo,
         "idioma": idioma,
         "numero": numero,
         "artista": artista,
-        "brochure_falta": brochure_falta,
     }

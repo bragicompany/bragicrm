@@ -191,7 +191,8 @@
     <!-- SEGUIMIENTO (follow-up): para recordar tras el día 4 / día 9 -->
     <form method="post" action="{{ url_for('generar_seguimiento', venue_id=v.id) }}" class="form-actividad" style="background:#fafbf6">
       <div style="font-size:12px;color:#6b7280;margin-bottom:8px;text-transform:none;font-weight:400">
-        ↪︎ <strong>Seguimiento</strong> (cuando no responden): recordatorio corto que reusa el brochure.
+        ↪︎ <strong>Seguimiento</strong> (cuando no responden): va como <em>Re:</em> del hilo original.
+        #1 = recordatorio + valor · #2 = cierre cortés ("último correo").
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <label>Idioma

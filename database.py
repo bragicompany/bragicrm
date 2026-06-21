@@ -459,6 +459,22 @@ def contar_por(columna, tabla="venues"):
     return {f["k"]: f["c"] for f in filas}
 
 
+def asunto_original(venue_id):
+    """Asunto del PRIMER correo enviado a un venue (no un seguimiento). Sirve para que
+    el follow-up vaya en el mismo hilo: 'Re: <ese asunto>'. None si aún no hay envío."""
+    conn = conectar()
+    fila = conn.execute(
+        """SELECT asunto FROM mensajes
+           WHERE venue_id = ? AND estado = 'enviado'
+             AND (origen IS NULL OR origen != 'seguimiento')
+           ORDER BY fecha_envio ASC, id ASC
+           LIMIT 1""",
+        (venue_id,),
+    ).fetchone()
+    conn.close()
+    return fila["asunto"] if fila else None
+
+
 def venues_contactados_con_envios():
     """Venues en estado 'contactado' (ya se les escribió, aún no responden) con un
     resumen de sus correos enviados: cuántos y la fecha del último. Para la cadencia

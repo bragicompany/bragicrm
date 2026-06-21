@@ -1,4 +1,4 @@
-# PLANTILLAS DE CORREO — OUTREACH BRAGI (v5 · EN + ES)
+# PLANTILLAS DE CORREO — OUTREACH BRAGI (v7 · EN + ES + FOLLOW-UPS)
 ### Venues directos · voz de empresa ("Bragi Company") · nombre solo en la firma
 
 > **Voz:** Bragi Company (nosotros) en el cuerpo; el nombre va en la FIRMA (que se sepa que lo manda un humano).
@@ -61,7 +61,7 @@ So it's not a shot in the dark, here's his brochure and a video of the live show
 If it's a fit for a date, just reply and we'll lock it in quickly — a short call is all it takes.
 
 Best,
-Alejandro — Bragi Company
+Alejandro Salazar — Marketing Director, Bragi Company
 
 ### Version B — lineup + professional
 **Subject:** `a proposal for [venue]`
@@ -77,7 +77,7 @@ Here's his brochure and a live video so you can see the level right away: [LINK]
 If it works for you, we'll lock it in fast without taking up your time.
 
 Best,
-Alejandro — Bragi Company
+Alejandro Salazar — Marketing Director, Bragi Company
 
 ---
 
@@ -97,7 +97,7 @@ Here's her brochure and a video of the live show: [LINK]
 If it's a fit for a date, just reply and we'll lock it in quickly.
 
 Best,
-Alejandro — Bragi Company
+Alejandro Salazar — Marketing Director, Bragi Company
 
 ### Version B — experience + content
 **Subject:** `a proposal for [venue]`
@@ -113,7 +113,7 @@ Here's her brochure and a live video: [LINK]
 If it works for you, we'll lock it in fast.
 
 Best,
-Alejandro — Bragi Company
+Alejandro Salazar — Marketing Director, Bragi Company
 
 ---
 
@@ -135,7 +135,7 @@ Para que no sea a ciegas, aquí mismo les dejamos el brochure y el video del sho
 Si les interesa para una fecha, nos dicen y lo concretamos rápido (con una llamada corta basta).
 
 Un saludo,
-Alejandro — Bragi Company
+Alejandro Salazar — Director de Marketing, Bragi Company
 
 ### Versión B — programación + profesional
 **Asunto:** `propuesta para [venue]`
@@ -151,7 +151,7 @@ Les dejamos el brochure y el video en vivo para que vean el nivel de una vez: [L
 Si les sirve, lo concretamos rápido sin hacerles perder tiempo.
 
 Un saludo,
-Alejandro — Bragi Company
+Alejandro Salazar — Director de Marketing, Bragi Company
 
 ---
 
@@ -171,7 +171,7 @@ Aquí mismo les dejamos el brochure y el video del show para que lo vean: [LINK]
 Si les interesa para una fecha, nos dicen y lo concretamos rápido.
 
 Un saludo,
-Alejandro — Bragi Company
+Alejandro Salazar — Director de Marketing, Bragi Company
 
 ### Versión B — experiencia + contenido
 **Asunto:** `propuesta para [venue]`
@@ -187,7 +187,99 @@ Les compartimos el brochure y el video en vivo: [LINK]
 Si les sirve, lo concretamos rápido.
 
 Un saludo,
-Alejandro — Bragi Company
+Alejandro Salazar — Director de Marketing, Bragi Company
+
+---
+
+---
+
+# =================  FOLLOW-UPS (seguimiento)  =================
+
+> **Cadencia:** Día 0 = correo inicial · **Día 4 = Follow-up 1** · **Día 9 = Follow-up 2**.
+> Van como RESPUESTA al correo original (mismo hilo), más cortos que el original.
+> **Solo se envían si NO han respondido.** Si responden, se detiene la cadencia.
+> Follow-up 1 = recordatorio + recordar el beneficio de visibilidad (medios/redes) + pedir un sí/no.
+> Follow-up 2 = cierre cortés ("break-up"): avisas que es tu último correo. Es el que más respuestas genera.
+
+---
+
+## FOLLOW-UP 1 — Día 4 (recordatorio + valor)
+
+### DAVIKANE — EN
+**(reply en el mismo hilo)**
+
+Hi [name or "[venue] team"],
+
+Floating this back up in case it got buried. One thing worth mentioning: Davikane is getting steady media coverage right now, so a date at [venue] would also put your spot in front of those audiences.
+
+Worth a look for your lineup? Even a quick yes or no helps.
+
+Best,
+Alejandro Salazar — Marketing Director, Bragi Company
+
+### DAVIKANE — ES
+
+Hola [nombre o "equipo de (venue)"],
+
+Les reflotamos esto por si se traspapeló. Un detalle que vale la pena: Davikane está teniendo buen movimiento en medios justo ahora, así que una fecha en [venue] también pondría su lugar frente a esas audiencias.
+
+¿Vale la pena para su programación? Con un sí o no rápido nos ayudan.
+
+Un saludo,
+Alejandro Salazar — Director de Marketing, Bragi Company
+
+### DANI — EN
+
+Hi [name or "[venue] team"],
+
+Floating this back up in case it got buried. One thing worth mentioning: Dani has a strong, active social media following, so a date at [venue] would also bring real digital reach to your spot.
+
+Worth a look for your lineup? Even a quick yes or no helps.
+
+Best,
+Alejandro Salazar — Marketing Director, Bragi Company
+
+### DANI — ES
+
+Hola [nombre o "equipo de (venue)"],
+
+Les reflotamos esto por si se traspapeló. Un detalle que vale la pena: Dani tiene una comunidad fuerte y activa en redes, así que una fecha en [venue] también le traería buen alcance digital a su lugar.
+
+¿Vale la pena para su programación? Con un sí o no rápido nos ayudan.
+
+Un saludo,
+Alejandro Salazar — Director de Marketing, Bragi Company
+
+---
+
+## FOLLOW-UP 2 — Día 9 (cierre cortés / break-up · igual para ambos artistas)
+
+### EN
+
+Hi [name or "[venue] team"],
+
+I don't want to keep cluttering your inbox, so this will be my last note on this.
+
+If the timing isn't right, no problem at all — just let me know and I'll close the loop. And if it's worth a look down the road, the door's open whenever.
+
+Either way, wishing you great shows ahead.
+
+Best,
+Alejandro Salazar — Marketing Director, Bragi Company
+
+### ES
+
+Hola [nombre o "equipo de (venue)"],
+
+No quiero seguir llenándoles la bandeja, así que este será mi último correo sobre esto.
+
+Si no es el momento, no hay problema — me avisan y lo cierro por ahora. Y si más adelante vale la pena verlo, la puerta queda abierta cuando quieran.
+
+De cualquier forma, les deseo grandes shows.
+
+Un saludo,
+Alejandro Salazar — Director de Marketing, Bragi Company
+
 
 ---
 
@@ -210,4 +302,4 @@ Alejandro — Bragi Company
 
 ---
 
-*Plantillas v5 — Bragi. EN + ES. Voz de empresa, nombre en la firma. Davikane = Cumbia Texmex/regional mexicano; Dani = R&B/pop. Sin "música propia". "encaja" → "conecta con / va perfecto para / interesa". Brochure+video en el primer correo (link).*
+*Plantillas v7 — Bragi. Incluye follow-ups (días 4 y 9, EN+ES). EN + ES. Voz de empresa, nombre en la firma. Davikane = Cumbia Texmex/regional mexicano; Dani = R&B/pop. Sin "música propia". "encaja" → "conecta con / va perfecto para / interesa". Brochure+video en el primer correo (link).*

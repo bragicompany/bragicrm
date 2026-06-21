@@ -359,10 +359,12 @@ def generar_seguimiento(venue_id):
                 version=f"F{numero}",
             )
         else:
-            b = plantillas.generar_seguimiento(artista, venue, idioma=idioma, numero=numero)
+            asunto_previo = database.asunto_original(venue_id)
+            b = plantillas.generar_seguimiento(
+                artista, venue, idioma=idioma, numero=numero, asunto_previo=asunto_previo)
             database.agregar_mensaje(
                 venue_id=venue_id, asunto=b["asunto"], cuerpo=b["cuerpo"],
-                modelo="plantilla v5 (seguimiento)", origen="seguimiento",
+                modelo="plantilla v7 (seguimiento)", origen="seguimiento",
                 idioma=b["idioma"], version=f"F{b['numero']}",
             )
         return redirect(destino + "?correo_ok=1#correos")
