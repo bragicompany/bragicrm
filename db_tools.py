@@ -26,22 +26,27 @@ import database
 TABLAS = ["venues", "actividades", "mensajes"]
 
 
-def exportar(ruta=None):
-    """Vuelca todas las tablas a un JSON portátil. Solo lectura: no modifica la base."""
+def volcar():
+    """Devuelve TODO el contenido de la base como un dict portátil. Solo lectura."""
     conn = database.conectar()
     datos = {
         "_meta": {
             "exportado_el": datetime.now().isoformat(timespec="seconds"),
-            "origen": database.DB_FILE,
+            "motor": database.DIALECTO,
             "tablas": TABLAS,
         }
     }
-    total = 0
     for tabla in TABLAS:
         filas = conn.execute(f"SELECT * FROM {tabla}").fetchall()
         datos[tabla] = [dict(f) for f in filas]
-        total += len(filas)
     conn.close()
+    return datos
+
+
+def exportar(ruta=None):
+    """Vuelca todas las tablas a un JSON portátil. Solo lectura: no modifica la base."""
+    datos = volcar()
+    total = sum(len(datos.get(t, [])) for t in TABLAS)
 
     if not ruta:
         os.makedirs(database.BACKUP_DIR, exist_ok=True)

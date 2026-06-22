@@ -354,6 +354,23 @@ def borrar_actividad(actividad_id):
     return redirect(url_for("ficha", venue_id=venue_id) + "#actividades")
 
 
+@app.route("/backup")
+def backup():
+    """Descarga un respaldo de toda la base (JSON portátil) desde el navegador.
+    Útil sobre todo en la nube con base temporal: respaldar a un clic, seguido."""
+    import json
+    import db_tools
+    from flask import Response
+    datos = db_tools.volcar()
+    contenido = json.dumps(datos, ensure_ascii=False, indent=2)
+    nombre = "bragi_export_" + date.today().isoformat() + ".json"
+    return Response(
+        contenido,
+        mimetype="application/json",
+        headers={"Content-Disposition": f"attachment; filename={nombre}"},
+    )
+
+
 @app.route("/agenda")
 def agenda():
     recordatorios = database.listar_recordatorios()

@@ -1,0 +1,33 @@
+# Blueprint de Render (Fase 6C-3). Al conectar el repo en Render -> "New + -> Blueprint",
+# Render lee este archivo y crea el servicio web. Las variables marcadas sync:false
+# se piden al desplegar (las pegas tú); SECRET_KEY se genera sola.
+services:
+  - type: web
+    name: bragi-crm
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY            # se genera automáticamente (sesiones del candado)
+        generateValue: true
+      - key: DATABASE_URL          # la URL del Postgres de Render (la pegas tú)
+        sync: false
+      - key: APP_PASSWORD          # la contraseña del candado (la eliges tú)
+        sync: false
+      - key: SENDGRID_WEBHOOK_TOKEN # token secreto del webhook de aperturas
+        sync: false
+      - key: GOOGLE_PLACES_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_NAME
+        sync: false
+      - key: REPLY_TO
+        sync: false
+      - key: BRAGI_ADDRESS
+        sync: false
