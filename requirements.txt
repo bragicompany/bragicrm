@@ -10,4 +10,4 @@ sendgrid==6.11.0      # para enviar los correos aprobados (Fase 5)
 
 # --- Para la nube (Fase 6C). Sin efecto local: solo se usan al desplegar. ---
 gunicorn==23.0.0      # servidor de producción (la nube lo usa en vez de app.run)
-psycopg[binary]==3.2.3 # conector de Postgres (solo si DATABASE_URL apunta a Postgres)
+psycopg[binary]==3.2.13 # conector de Postgres (solo si DATABASE_URL apunta a Postgres)
