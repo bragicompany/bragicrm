@@ -73,10 +73,13 @@ def _cuerpo_html(cuerpo, direccion, con_logo=True):
     )
 
 
-def enviar_correo(destinatario, asunto, cuerpo):
+def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     """
     Envía un correo. Devuelve el ID de SendGrid (string) si todo salió bien.
     Lanza FaltaSendgridError / EnvioError con mensajes claros si algo falla.
+
+    'mensaje_id' (opcional) se adjunta como etiqueta (custom arg) para que el
+    webhook de aperturas (Fase 6C-2) pueda casar el evento con este correo exacto.
     """
     api_key = os.getenv("SENDGRID_API_KEY")
     if not api_key or "pega_aqui" in api_key:
@@ -96,7 +99,7 @@ def enviar_correo(destinatario, asunto, cuerpo):
     import sendgrid
     from sendgrid.helpers.mail import (
         Mail, Email, To, ReplyTo, TrackingSettings, OpenTracking, SubscriptionTracking,
-        Attachment, FileContent, FileName, FileType, Disposition, ContentId,
+        Attachment, FileContent, FileName, FileType, Disposition, ContentId, CustomArg,
     )
 
     con_logo = os.path.exists(LOGO_PATH)
@@ -107,6 +110,10 @@ def enviar_correo(destinatario, asunto, cuerpo):
         html_content=_cuerpo_html(cuerpo, direccion, con_logo=con_logo),
     )
     message.reply_to = ReplyTo(reply_to)
+
+    # Etiqueta para el webhook de aperturas: liga el evento a este correo (6C-2).
+    if mensaje_id is not None:
+        message.custom_arg = CustomArg("mensaje_id", str(mensaje_id))
 
     # Incrustar el logo de Bragi en la firma (imagen inline, viaja con el correo).
     if con_logo:

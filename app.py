@@ -9,6 +9,7 @@ Para arrancar:   python3 app.py
 Luego abre:      http://localhost:5000
 """
 
+import os
 import re
 from datetime import date
 from urllib.parse import quote_plus
@@ -585,7 +586,7 @@ def enviar_mensaje(mensaje_id):
         return redirect(destino_url + "?correo_error=El venue no tiene email; usa llamada o WhatsApp.#correos")
 
     try:
-        sg_id = email_sender.enviar_correo(destinatario, m["asunto"], m["cuerpo"])
+        sg_id = email_sender.enviar_correo(destinatario, m["asunto"], m["cuerpo"], mensaje_id=m["id"])
         database.marcar_enviado(mensaje_id, sg_id, destinatario)
         # Mueve el venue en el pipeline y deja registro en la línea de tiempo.
         if venue and venue["estado_pipeline"] in ("nuevo", "calificado"):
@@ -616,6 +617,44 @@ def marcar_mensaje(mensaje_id):
         # Si respondió, mueve el venue a 'respondió' en el pipeline.
         database.actualizar_venue(m["venue_id"], {"estado_pipeline": "respondió"})
     return redirect(url_for("ficha", venue_id=m["venue_id"]) + "#correos")
+
+
+@app.route("/webhook/sendgrid", methods=["POST"])
+def webhook_sendgrid():
+    """Recibe los eventos de SendGrid (Fase 6C-2) y marca 'abierto' automáticamente.
+
+    Protegido con un token secreto en la URL (SENDGRID_WEBHOOK_TOKEN en .env): la URL
+    que configuras en SendGrid debe terminar en  ?token=ESE_SECRETO. Si no hay token
+    configurado, se acepta sin verificar (modo local de pruebas).
+
+    Nota: SendGrid NO informa 'respuestas' (eso sigue marcándose a mano).
+    """
+    secreto = os.getenv("SENDGRID_WEBHOOK_TOKEN")
+    if secreto and request.args.get("token") != secreto:
+        abort(403)
+
+    eventos = request.get_json(force=True, silent=True) or []
+    if isinstance(eventos, dict):
+        eventos = [eventos]
+
+    marcados = 0
+    for ev in eventos:
+        if not isinstance(ev, dict) or ev.get("event") != "open":
+            continue
+        # 1) Por la etiqueta que pusimos al enviar (lo más confiable).
+        mid = ev.get("mensaje_id")
+        # 2) Si no viene, casar por el id de SendGrid (por prefijo).
+        if mid is None:
+            mid = database.buscar_mensaje_por_sg(ev.get("sg_message_id"))
+        try:
+            mid = int(mid)
+        except (TypeError, ValueError):
+            continue
+        database.marcar_tracking(mid, abierto=True)
+        marcados += 1
+
+    # Siempre 200 para que SendGrid no reintente; el conteo es solo informativo.
+    return {"ok": True, "marcados": marcados}, 200
 
 
 if __name__ == "__main__":

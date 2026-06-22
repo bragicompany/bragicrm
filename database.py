@@ -425,6 +425,24 @@ def marcar_enviado(mensaje_id, sg_message_id, destinatario):
     conn.close()
 
 
+def buscar_mensaje_por_sg(sg_message_id):
+    """Encuentra el mensaje por el id de SendGrid. Los eventos del webhook traen un
+    sg_message_id que EMPIEZA con el que guardamos al enviar, así que casamos por prefijo.
+    Devuelve el id del mensaje o None."""
+    if not sg_message_id:
+        return None
+    conn = conectar()
+    fila = conn.execute(
+        """SELECT id FROM mensajes
+           WHERE sg_message_id IS NOT NULL AND sg_message_id != ''
+             AND ? LIKE sg_message_id || '%'
+           ORDER BY id DESC LIMIT 1""",
+        (sg_message_id,),
+    ).fetchone()
+    conn.close()
+    return fila["id"] if fila else None
+
+
 def marcar_tracking(mensaje_id, abierto=None, respondido=None):
     """Marca a mano si un correo fue abierto o respondido (mientras no hay webhook)."""
     sets, params = [], []
