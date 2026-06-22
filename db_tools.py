@@ -57,7 +57,7 @@ def exportar(ruta=None):
 
 
 def _tabla_vacia(conn, tabla):
-    return conn.execute(f"SELECT COUNT(*) FROM {tabla}").fetchone()[0] == 0
+    return conn.execute(f"SELECT COUNT(*) AS n FROM {tabla}").fetchone()["n"] == 0
 
 
 def importar(ruta):
@@ -92,6 +92,17 @@ def importar(ruta):
             conn.execute(f"INSERT INTO {tabla} ({cols}) VALUES ({marc})", list(fila.values()))
             total += 1
     conn.commit()
+
+    # En Postgres, al importar con ids explícitos hay que adelantar la secuencia del
+    # id; si no, el próximo INSERT chocaría con un id repetido.
+    if database.es_postgres():
+        for tabla in TABLAS:
+            conn.execute(
+                f"SELECT setval(pg_get_serial_sequence('{tabla}', 'id'), "
+                f"COALESCE((SELECT MAX(id) FROM {tabla}), 1))"
+            )
+        conn.commit()
+
     conn.close()
     print(f"Importadas {total} filas desde {ruta}.")
     return total

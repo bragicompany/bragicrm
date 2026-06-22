@@ -14,7 +14,7 @@ import re
 from datetime import date
 from urllib.parse import quote_plus
 
-from flask import Flask, render_template, request, abort, redirect, url_for
+from flask import Flask, render_template, request, abort, redirect, url_for, session
 
 import database
 import places_search
@@ -26,6 +26,54 @@ import enrich
 import cadencia
 
 app = Flask(__name__)
+
+# Clave para las "sesiones" (recordar que ya iniciaste sesión). En la nube se pone
+# una de verdad en SECRET_KEY; en local basta con una fija para desarrollo.
+app.secret_key = os.getenv("SECRET_KEY") or "bragi-local-dev-no-secreto"
+
+# Asegura que las tablas existan al cargar (necesario en la nube, donde no se pasa
+# por __main__). Es idempotente: no borra ni recrea nada.
+try:
+    database.crear_base()
+    database.migrar()
+except Exception as _e:
+    print("Aviso: no se pudo inicializar la base al arrancar:", _e)
+
+
+# --- Candado de acceso (Fase 6C-3) ---
+# Si APP_PASSWORD está definida (en la nube), se exige iniciar sesión para usar el
+# CRM. En local no se define, así que NO estorba. El webhook queda exento (su token
+# lo protege) y la pantalla de login también.
+RUTAS_LIBRES = {"login", "logout", "webhook_sendgrid", "static"}
+
+
+@app.before_request
+def _exigir_login():
+    if not os.getenv("APP_PASSWORD"):
+        return  # sin candado en local
+    if request.endpoint in RUTAS_LIBRES:
+        return
+    if session.get("auth"):
+        return
+    return redirect(url_for("login", next=request.path))
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == os.getenv("APP_PASSWORD"):
+            session["auth"] = True
+            destino = request.args.get("next") or url_for("inicio")
+            return redirect(destino)
+        error = "Contraseña incorrecta."
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 
 @app.context_processor
@@ -71,6 +119,7 @@ def utilidades():
         enlace_whatsapp=enlace_whatsapp,
         enlace_llamada=enlace_llamada,
         hoy=date.today().isoformat(),
+        candado_activo=bool(os.getenv("APP_PASSWORD")),
     )
 
 

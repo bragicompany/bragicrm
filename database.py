@@ -22,21 +22,68 @@ load_dotenv()
 DB_FILE = os.getenv("DATABASE_FILE", "bragi_crm.db")
 BACKUP_DIR = "backups"
 
+# --- Dialecto: SQLite en local, Postgres en la nube (segun DATABASE_URL) ---
+# En local no hay DATABASE_URL -> SQLite (todo igual que siempre).
+# En la nube, el proveedor (Render) define DATABASE_URL -> Postgres.
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DIALECTO = "postgres" if DATABASE_URL.startswith(("postgres://", "postgresql://")) else "sqlite"
+
+
+def es_postgres():
+    return DIALECTO == "postgres"
+
+
+def _traducir(sql):
+    """Adapta el SQL (escrito con '?') a Postgres: escapa los '%' literales y cambia
+    los marcadores '?' por '%s'. En SQLite no se llama."""
+    return sql.replace("%", "%%").replace("?", "%s")
+
+
+class _Conexion:
+    """Envoltura fina sobre la conexion real. Permite que TODO el resto del codigo
+    siga usando '?' y conn.execute(...) sin cambios: aqui se traduce a Postgres
+    cuando hace falta y se delega lo demas a la conexion verdadera."""
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    def execute(self, sql, params=()):
+        if DIALECTO == "postgres":
+            sql = _traducir(sql)
+        return self._raw.execute(sql, params)
+
+    def commit(self):
+        return self._raw.commit()
+
+    def close(self):
+        return self._raw.close()
+
+    def __getattr__(self, nombre):
+        return getattr(self._raw, nombre)
+
 
 def conectar():
-    """Abre una conexion a la base. row_factory permite leer filas por nombre de columna."""
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Abre una conexion a la base (SQLite o Postgres). En ambos casos las filas se
+    leen por nombre de columna (fila['columna'])."""
+    if DIALECTO == "postgres":
+        import psycopg
+        from psycopg.rows import dict_row
+        raw = psycopg.connect(DATABASE_URL, row_factory=dict_row)
+    else:
+        raw = sqlite3.connect(DB_FILE)
+        raw.row_factory = sqlite3.Row
+    return _Conexion(raw)
 
 
 def crear_base():
-    """Crea la tabla 'venues' si todavia no existe. Es seguro correrlo muchas veces."""
+    """Crea las tablas si todavia no existen. Es seguro correrlo muchas veces.
+    La llave primaria cambia segun el motor (AUTOINCREMENT en SQLite, SERIAL en Postgres)."""
+    pk = "SERIAL PRIMARY KEY" if DIALECTO == "postgres" else "INTEGER PRIMARY KEY AUTOINCREMENT"
     conn = conectar()
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS venues (
-            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                 {pk},
             place_id           TEXT UNIQUE,          -- id de Google Places (evita duplicados)
             nombre             TEXT NOT NULL,
             categoria          TEXT,                 -- 'A' (venue directo) / 'B' (intermediario)
@@ -67,9 +114,9 @@ def crear_base():
     )
     # Tabla de actividades (linea de tiempo): un venue tiene muchas actividades.
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS actividades (
-            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            id             {pk},
             venue_id       INTEGER NOT NULL,
             canal          TEXT,   -- llamada / whatsapp / reunion / correo / nota
             fecha          TEXT,   -- cuando paso (YYYY-MM-DD)
@@ -84,9 +131,9 @@ def crear_base():
     # Tabla de mensajes de correo (borradores de la IA). Un venue puede tener varios
     # (para probar distintos ganchos y compararlos).
     conn.execute(
-        """
+        f"""
         CREATE TABLE IF NOT EXISTS mensajes (
-            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            id           {pk},
             venue_id     INTEGER NOT NULL,
             asunto       TEXT,
             cuerpo       TEXT,
@@ -108,9 +155,15 @@ def crear_base():
 
 
 def _columnas_existentes(tabla="venues"):
-    """Devuelve la lista de columnas que tiene hoy una tabla."""
+    """Devuelve la lista de columnas que tiene hoy una tabla (SQLite o Postgres)."""
     conn = conectar()
-    filas = conn.execute(f"PRAGMA table_info({tabla})").fetchall()
+    if DIALECTO == "postgres":
+        filas = conn.execute(
+            "SELECT column_name AS name FROM information_schema.columns WHERE table_name = ?",
+            (tabla,),
+        ).fetchall()
+    else:
+        filas = conn.execute(f"PRAGMA table_info({tabla})").fetchall()
     conn.close()
     return [f["name"] for f in filas]
 
@@ -139,7 +192,7 @@ def migrar():
     conn = conectar()
     aplicadas = []
     for tabla, columnas in cambios.items():
-        existentes = [f["name"] for f in conn.execute(f"PRAGMA table_info({tabla})").fetchall()]
+        existentes = _columnas_existentes(tabla)
         for nombre, definicion in columnas:
             if nombre not in existentes:
                 conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {definicion}")
@@ -183,6 +236,11 @@ def actualizar_venue(venue_id, campos):
 
 def respaldar():
     """Copia el archivo de la base a backups/ con la fecha y hora. 30 segundos de tranquilidad."""
+    if DIALECTO == "postgres":
+        # En Postgres no hay archivo local: el respaldo se hace desde el panel del
+        # proveedor o con  python3 db_tools.py export  (volcado portátil).
+        print("Base en Postgres: respalda desde el panel del proveedor o con db_tools export.")
+        return None
     if not os.path.exists(DB_FILE):
         print("Aun no hay base que respaldar (todavia no se ha creado).")
         return None
@@ -209,10 +267,11 @@ def guardar_venue(datos):
     columnas = ", ".join(datos.keys())
     marcadores = ", ".join(["?"] * len(datos))
     conn = conectar()
-    cur = conn.execute(
-        f"INSERT OR IGNORE INTO venues ({columnas}) VALUES ({marcadores})",
-        list(datos.values()),
-    )
+    if DIALECTO == "postgres":
+        sql = f"INSERT INTO venues ({columnas}) VALUES ({marcadores}) ON CONFLICT (place_id) DO NOTHING"
+    else:
+        sql = f"INSERT OR IGNORE INTO venues ({columnas}) VALUES ({marcadores})"
+    cur = conn.execute(sql, list(datos.values()))
     conn.commit()
     nuevo = cur.rowcount > 0
     conn.close()
@@ -268,10 +327,10 @@ def valores_distintos(columna):
         return []
     conn = conectar()
     filas = conn.execute(
-        f"SELECT DISTINCT {columna} FROM venues WHERE {columna} IS NOT NULL AND {columna} != '' ORDER BY {columna}"
+        f"SELECT DISTINCT {columna} AS v FROM venues WHERE {columna} IS NOT NULL AND {columna} != '' ORDER BY {columna}"
     ).fetchall()
     conn.close()
-    return [f[0] for f in filas]
+    return [f["v"] for f in filas]
 
 
 # ---------------------------------------------------------------------------
@@ -345,17 +404,20 @@ def agregar_mensaje(venue_id, asunto, cuerpo, gancho=None, modelo=None, estado="
     (artista va en el venue) para poder comparar resultados de tests A/B despues.
     """
     ahora = datetime.now().isoformat(timespec="seconds")
+    sql = """INSERT INTO mensajes
+                 (venue_id, asunto, cuerpo, estado, gancho, modelo,
+                  origen, idioma, version, asunto_variante, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+    params = (venue_id, asunto, cuerpo, estado, gancho, modelo,
+              origen, idioma, version, asunto_variante, ahora, ahora)
     conn = conectar()
-    cur = conn.execute(
-        """INSERT INTO mensajes
-               (venue_id, asunto, cuerpo, estado, gancho, modelo,
-                origen, idioma, version, asunto_variante, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (venue_id, asunto, cuerpo, estado, gancho, modelo,
-         origen, idioma, version, asunto_variante, ahora, ahora),
-    )
+    if DIALECTO == "postgres":
+        cur = conn.execute(sql + " RETURNING id", params)
+        nuevo_id = cur.fetchone()["id"]
+    else:
+        cur = conn.execute(sql, params)
+        nuevo_id = cur.lastrowid
     conn.commit()
-    nuevo_id = cur.lastrowid
     conn.close()
     return nuevo_id
 
@@ -507,7 +569,7 @@ def venues_contactados_con_envios():
         LEFT JOIN mensajes m ON m.venue_id = v.id
         WHERE v.estado_pipeline = 'contactado'
         GROUP BY v.id
-        HAVING num_enviados > 0
+        HAVING SUM(CASE WHEN m.estado = 'enviado' THEN 1 ELSE 0 END) > 0
         ORDER BY ultimo_envio ASC
         """
     ).fetchall()
@@ -587,11 +649,11 @@ def contar_enviados_recientes(dias=7):
     corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")
     conn = conectar()
     fila = conn.execute(
-        "SELECT COUNT(*) FROM mensajes WHERE estado = 'enviado' AND fecha_envio >= ?",
+        "SELECT COUNT(*) AS n FROM mensajes WHERE estado = 'enviado' AND fecha_envio >= ?",
         (corte,),
     ).fetchone()
     conn.close()
-    return fila[0] if fila else 0
+    return fila["n"] if fila else 0
 
 
 if __name__ == "__main__":

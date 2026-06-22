@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar — Bragi CRM</title>
+  <style>
+    body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+           background:#0e0e0e; color:#fff; display:flex; min-height:100vh; align-items:center; justify-content:center; }
+    .caja { background:#171717; border:1px solid #2a2a2a; border-radius:14px; padding:30px; width:320px; text-align:center; }
+    .logo { font-weight:800; font-size:20px; letter-spacing:.5px; margin-bottom:4px; }
+    .logo .lima { color:#c7f000; }
+    .sub { color:#888; font-size:13px; margin-bottom:20px; }
+    input[type=password] { width:100%; padding:11px 12px; border:1px solid #333; border-radius:8px;
+           background:#0e0e0e; color:#fff; font-size:15px; box-sizing:border-box; }
+    button { width:100%; margin-top:12px; padding:11px; border:none; border-radius:8px;
+           background:#c7f000; color:#111; font-weight:800; font-size:15px; cursor:pointer; }
+    button:hover { background:#b2d800; }
+    .error { color:#fca5a5; font-size:13px; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <form class="caja" method="post">
+    <div class="logo">BRAGI <span class="lima">CRM</span></div>
+    <div class="sub">Acceso privado</div>
+    <input type="password" name="password" placeholder="Contraseña" autofocus required>
+    <button type="submit">Entrar</button>
+    {% if error %}<div class="error">⚠ {{ error }}</div>{% endif %}
+  </form>
+</body>
+</html>
