@@ -2,7 +2,7 @@
 {% block title %}{{ v.nombre }} — CRM Bragi{% endblock %}
 {% block contenido %}
 
-  <a class="volver" href="{{ url_for('lista') }}">&larr; Volver a la lista</a>
+  <a class="volver" href="{{ volver }}">&larr; Volver a la lista</a>
   <h1 style="margin-top:10px">{{ v.nombre }}</h1>
   <div style="margin-bottom:16px">
     {% if v.categoria %}<span class="chip cat-{{ v.categoria }}">Categoria {{ v.categoria }}</span>{% endif %}

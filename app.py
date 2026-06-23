@@ -159,6 +159,9 @@ def inicio():
 
 @app.route("/venues")
 def lista():
+    # Recuerda esta lista (con sus filtros) para que "Volver" desde una ficha
+    # regrese exactamente aquí, sin tener que re-aplicar filtros.
+    session["ultima_lista"] = request.full_path.rstrip("?")
     # Lee los filtros que vengan en la URL (vacios = sin filtro).
     ciudad = request.args.get("ciudad") or None
     artista = request.args.get("artista") or None
@@ -233,6 +236,7 @@ def ficha(venue_id):
         correo_error=request.args.get("correo_error"),
         enriq_ok=request.args.get("enriq_ok"),
         enriq_error=request.args.get("enriq_error"),
+        volver=session.get("ultima_lista") or url_for("lista"),
     )
 
 
