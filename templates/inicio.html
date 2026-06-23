@@ -5,6 +5,23 @@
   <h1 class="saludo">Hola, Alejandro <span class="lima">·</span> Bragi CRM</h1>
   <div style="color:#6b7280;font-size:14px;margin-bottom:6px">Tu tablero de outreach de un vistazo.</div>
 
+  <!-- Plan del día (estrategia A/B + rampa) -->
+  <div style="background:var(--tinta);color:#fff;border-radius:12px;padding:14px 18px;margin:14px 0;display:flex;gap:24px;flex-wrap:wrap;align-items:center">
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#aaa">Hoy toca</div>
+      <div style="font-size:20px;font-weight:800;color:var(--lima)">Cuerpo {{ cuerpo_hoy }}</div>
+      <div style="font-size:12px;color:#aaa">regla: día par → A · día impar → B</div>
+    </div>
+    <div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#aaa">Enviados hoy</div>
+      <div style="font-size:20px;font-weight:800">{{ enviados_hoy }}</div>
+      <div style="font-size:12px;color:#aaa">meta de esta semana: ~5/día</div>
+    </div>
+    <div style="font-size:12px;color:#9ca3af;max-width:320px">
+      Tip: cambia <strong>una variable a la vez</strong>. Hoy fija el cuerpo en {{ cuerpo_hoy }} y, si pruebas asuntos, deja el cuerpo igual.
+    </div>
+  </div>
+
   <!-- Tarjetas de números clave -->
   <div class="cards">
     <div class="card">

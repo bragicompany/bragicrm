@@ -644,6 +644,18 @@ def comparacion_ab():
     return salida
 
 
+def contar_enviados_hoy():
+    """Cuántos correos se han enviado HOY (para no pasarte de la rampa diaria)."""
+    hoy = datetime.now().strftime("%Y-%m-%d")
+    conn = conectar()
+    fila = conn.execute(
+        "SELECT COUNT(*) AS n FROM mensajes WHERE estado = 'enviado' AND substr(fecha_envio,1,10) = ?",
+        (hoy,),
+    ).fetchone()
+    conn.close()
+    return fila["n"] if fila else 0
+
+
 def contar_enviados_recientes(dias=7):
     """Cuántos correos se han enviado en los últimos N días (para vigilar la rampa)."""
     corte = (datetime.now() - timedelta(days=dias)).isoformat(timespec="seconds")

@@ -137,6 +137,8 @@ def inicio():
     # Embudo: todas las etapas en orden (incluye las que están en 0) para ver el flujo.
     embudo = [(e, por_estado.get(e, 0)) for e in orden_pipeline]
     embudo_max = max([n for _, n in embudo] + [1])
+    # Plan A/B del día: día par -> Cuerpo A, día impar -> Cuerpo B (regla simple).
+    cuerpo_hoy = "A" if date.today().day % 2 == 0 else "B"
     return render_template(
         "inicio.html",
         total_venues=total_venues,
@@ -148,6 +150,8 @@ def inicio():
         metricas=database.metricas_correos(),
         comparacion=database.comparacion_ab(),
         enviados_semana=database.contar_enviados_recientes(7),
+        enviados_hoy=database.contar_enviados_hoy(),
+        cuerpo_hoy=cuerpo_hoy,
         recordatorios=database.listar_recordatorios()[:6],
         seguimiento_conteos=cadencia.conteos(),
     )
