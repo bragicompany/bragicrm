@@ -12,15 +12,10 @@ La llave va en .env (SENDGRID_API_KEY). Si falta, lo dice claro.
 
 import os
 import re
-import base64
 import html as _html
 
-# Enlaces con etiqueta estilo [texto](url) -> se convierten en un botón en el correo.
+# Enlaces con etiqueta estilo [texto](url) -> se convierten en enlace de texto.
 _ENLACE_MD = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
-
-# Logo que se incrusta en la firma del correo (viaja con el email).
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo_email.jpg")
-LOGO_CID = "bragilogo"
 
 
 class FaltaSendgridError(Exception):
@@ -31,44 +26,34 @@ class EnvioError(Exception):
     """Error al enviar, con un mensaje claro para mostrar."""
 
 
-def _boton(texto, url):
-    """Botón lima (marca Bragi) para enlaces como el brochure."""
-    return (
-        f'<a href="{_html.escape(url, quote=True)}" '
-        f'style="display:inline-block;background:#bef264;color:#111;text-decoration:none;'
-        f'font-weight:bold;padding:11px 20px;border-radius:8px;margin:6px 0;'
-        f'font-family:Arial,Helvetica,sans-serif">{_html.escape(texto)} ▸</a>'
-    )
+def _enlace(texto, url):
+    """Enlace de texto normal (no botón), para que el correo se vea personal."""
+    return f'<a href="{_html.escape(url, quote=True)}">{_html.escape(texto)}</a>'
 
 
-def _cuerpo_html(cuerpo, direccion, con_logo=True):
-    """Convierte el cuerpo (texto plano) a HTML simple + firma con logo y dirección.
-    Los enlaces con etiqueta [texto](url) se vuelven botones. El link de baja lo
-    agrega SendGrid automáticamente (subscription tracking)."""
+def _cuerpo_html(cuerpo, direccion, con_logo=False):
+    """Convierte el cuerpo (texto plano) a HTML sencillo y PERSONAL (sin logo ni
+    botones de colores), para mejorar la llegada a la bandeja Principal.
+    Los enlaces [texto](url) se vuelven enlaces de texto. La dirección legal va
+    al pie (CAN-SPAM); el link de baja lo agrega SendGrid (subscription tracking)."""
     # 1) Sacar los enlaces [texto](url) antes de escapar (para no romper la url) y
     #    dejar un marcador temporal en su lugar.
-    botones = []
+    enlaces = []
 
     def _guardar(m):
-        botones.append(_boton(m.group(1), m.group(2)))
-        return f"\x00{len(botones) - 1}\x00"
+        enlaces.append(_enlace(m.group(1), m.group(2)))
+        return f"\x00{len(enlaces) - 1}\x00"
 
     texto = _ENLACE_MD.sub(_guardar, cuerpo or "")
     # 2) Escapar el resto del texto y respetar los saltos de línea.
     seguro = _html.escape(texto).replace("\n", "<br>")
-    # 3) Reinsertar los botones ya armados.
-    for i, btn in enumerate(botones):
-        seguro = seguro.replace(f"\x00{i}\x00", btn)
-    logo = (
-        f'<img src="cid:{LOGO_CID}" width="120" alt="Bragi Company" '
-        f'style="display:block;margin:8px 0">' if con_logo else ""
-    )
+    # 3) Reinsertar los enlaces ya armados.
+    for i, enl in enumerate(enlaces):
+        seguro = seguro.replace(f"\x00{i}\x00", enl)
     return (
         f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#111;line-height:1.5">'
         f"{seguro}"
-        f'<hr style="border:none;border-top:1px solid #ddd;margin:20px 0">'
-        f"{logo}"
-        f'<p style="font-size:12px;color:#888">{_html.escape(direccion)}</p>'
+        f'<br><br><span style="font-size:12px;color:#999">{_html.escape(direccion)}</span>'
         f"</div>"
     )
 
@@ -99,33 +84,21 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     import sendgrid
     from sendgrid.helpers.mail import (
         Mail, Email, To, ReplyTo, TrackingSettings, OpenTracking, SubscriptionTracking,
-        Attachment, FileContent, FileName, FileType, Disposition, ContentId, CustomArg,
+        CustomArg,
     )
 
-    con_logo = os.path.exists(LOGO_PATH)
+    # Correo personal: sin logo ni imágenes (mejora la llegada a Principal).
     message = Mail(
         from_email=Email(remitente, nombre),
         to_emails=To(destinatario),
         subject=asunto,
-        html_content=_cuerpo_html(cuerpo, direccion, con_logo=con_logo),
+        html_content=_cuerpo_html(cuerpo, direccion),
     )
     message.reply_to = ReplyTo(reply_to)
 
     # Etiqueta para el webhook de aperturas: liga el evento a este correo (6C-2).
     if mensaje_id is not None:
         message.custom_arg = CustomArg("mensaje_id", str(mensaje_id))
-
-    # Incrustar el logo de Bragi en la firma (imagen inline, viaja con el correo).
-    if con_logo:
-        with open(LOGO_PATH, "rb") as f:
-            datos_logo = base64.b64encode(f.read()).decode()
-        message.attachment = Attachment(
-            file_content=FileContent(datos_logo),
-            file_name=FileName("bragi.jpg"),
-            file_type=FileType("image/jpeg"),
-            disposition=Disposition("inline"),
-            content_id=ContentId(LOGO_CID),
-        )
 
     # Tracking de aperturas + link de baja (CAN-SPAM). Con subscription_tracking
     # activado, SendGrid agrega automáticamente el enlace de baja al pie del correo.

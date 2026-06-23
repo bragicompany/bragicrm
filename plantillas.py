@@ -178,10 +178,23 @@ IDIOMAS = ("en", "es")
 VERSIONES = ("A", "B")
 BROCHURE_PENDIENTE = "[BROCHURE PENDIENTE — agrega el link en artistas.py]"
 
-# Firma (la voz es de empresa; el nombre, cargo y apellido van SOLO aquí).
+# Firma (la voz es de empresa; el nombre, cargo, empresa y web van SOLO aquí).
+# Orden: cierre · nombre · cargo · empresa · sitio web.
 FIRMA = {
-    "en": "Best,\nAlejandro Salazar — Marketing Director, Bragi Company",
-    "es": "Un saludo,\nAlejandro Salazar — Director de Marketing, Bragi Company",
+    "en": (
+        "Best,\n"
+        "Alejandro Salazar\n"
+        "Marketing & Sales Director\n"
+        "Bragi Company\n"
+        "bragicompany.com"
+    ),
+    "es": (
+        "Un saludo,\n"
+        "Alejandro Salazar\n"
+        "Director de Marketing y Ventas\n"
+        "Bragi Company\n"
+        "bragicompany.com"
+    ),
 }
 
 
@@ -330,8 +343,8 @@ def generar(artista, venue, idioma="en", version="A", asunto_indice=0):
     if brochure_falta:
         link = BROCHURE_PENDIENTE
     else:
-        etiqueta = (f"View {nombre_artistico}'s brochure & video"
-                    if idioma == "en" else f"Ver el brochure de {nombre_artistico}")
+        etiqueta = ("see the brochure and video here"
+                    if idioma == "en" else "ver el brochure y el video aquí")
         link = f"[{etiqueta}]({brochure})"
 
     def rellenar(texto):
