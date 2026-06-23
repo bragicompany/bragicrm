@@ -651,12 +651,21 @@ def enviar_mensaje(mensaje_id):
         return redirect(destino_url + "?correo_error=Solo se envían borradores aprobados.#correos")
     if venue and venue["estado_pipeline"] == "descartado":
         return redirect(destino_url + "?correo_error=Este venue está descartado; no se envía.#correos")
-    destinatario = (venue["email"].split(",")[0].strip() if venue and venue["email"] else "")
-    if not destinatario:
+    # Correos del venue (pueden ser varios). El usuario elige a cuál(es) enviar.
+    emails_venue = [e.strip() for e in (venue["email"] or "").split(",") if e.strip()] if venue else []
+    elegido = request.form.get("destinatario")
+    if elegido == "__todos__":
+        destinatarios = emails_venue
+    elif elegido in emails_venue:
+        destinatarios = [elegido]
+    else:
+        destinatarios = emails_venue[:1]  # por defecto, el primero
+    if not destinatarios:
         return redirect(destino_url + "?correo_error=El venue no tiene email; usa llamada o WhatsApp.#correos")
+    destinatario = ", ".join(destinatarios)  # para registrar a quién(es) se envió
 
     try:
-        sg_id = email_sender.enviar_correo(destinatario, m["asunto"], m["cuerpo"], mensaje_id=m["id"])
+        sg_id = email_sender.enviar_correo(destinatarios, m["asunto"], m["cuerpo"], mensaje_id=m["id"])
         database.marcar_enviado(mensaje_id, sg_id, destinatario)
         # Mueve el venue en el pipeline y deja registro en la línea de tiempo.
         if venue and venue["estado_pipeline"] in ("nuevo", "calificado"):

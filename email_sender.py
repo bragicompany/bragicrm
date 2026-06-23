@@ -78,7 +78,12 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     reply_to = os.getenv("REPLY_TO", remitente)
     direccion = os.getenv("BRAGI_ADDRESS", "Bragi Company, USA")
 
-    if not destinatario:
+    # Acepta un correo (str) o varios (lista). Limpia vacíos y duplicados.
+    if isinstance(destinatario, (list, tuple)):
+        destinatarios = list(dict.fromkeys(d.strip() for d in destinatario if d and d.strip()))
+    else:
+        destinatarios = [destinatario.strip()] if destinatario and destinatario.strip() else []
+    if not destinatarios:
         raise EnvioError("Este venue no tiene email; no se puede enviar (usa llamada/WhatsApp).")
 
     import sendgrid
@@ -90,7 +95,7 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     # Correo personal: sin logo ni imágenes (mejora la llegada a Principal).
     message = Mail(
         from_email=Email(remitente, nombre),
-        to_emails=To(destinatario),
+        to_emails=[To(d) for d in destinatarios],
         subject=asunto,
         html_content=_cuerpo_html(cuerpo, direccion),
     )

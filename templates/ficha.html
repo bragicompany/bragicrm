@@ -276,6 +276,7 @@
               <button class="btn gris" type="submit">Guardar cambios</button>
             </form>
             {% set destino = (v.email.split(',')[0].strip()) if v.email else '' %}
+            {% set emails = (v.email.split(',') | map('trim') | select | list) if v.email else [] %}
             <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
               {% if m.estado == 'borrador' %}
                 <form method="post" action="{{ url_for('decidir_mensaje', mensaje_id=m.id) }}">
@@ -284,8 +285,17 @@
               {% elif m.estado == 'aprobado' %}
                 {% if destino and v.estado_pipeline != 'descartado' %}
                   <form method="post" action="{{ url_for('enviar_mensaje', mensaje_id=m.id) }}"
-                        onsubmit="return confirm('¿Enviar este correo a {{ destino }}? Sale al venue de verdad.')">
-                    <button class="btn verde" type="submit">📤 Enviar a {{ destino }}</button>
+                        onsubmit="return confirm('¿Enviar este correo? Sale al venue de verdad.')"
+                        style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    {% if emails|length > 1 %}
+                      <select name="destinatario" style="padding:7px 10px;border:1px solid var(--linea);border-radius:6px;font-size:13px">
+                        {% for e in emails %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                        <option value="__todos__">✉️ Todos ({{ emails|length }})</option>
+                      </select>
+                      <button class="btn verde" type="submit">📤 Enviar</button>
+                    {% else %}
+                      <button class="btn verde" type="submit">📤 Enviar a {{ destino }}</button>
+                    {% endif %}
                   </form>
                 {% else %}
                   <span style="font-size:13px;color:#b45309">No se puede enviar:
