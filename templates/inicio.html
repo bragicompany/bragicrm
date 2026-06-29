@@ -59,6 +59,11 @@
       <div class="big">{{ seguimiento_conteos.cola }}</div>
       <div class="sub2"><a class="fila" href="{{ url_for('cola') }}">Ver cola →</a></div>
     </div>
+    <div class="card" {% if rebotes %}style="border:1px solid #fecaca;background:#fef2f2"{% endif %}>
+      <h3>Correos rebotados</h3>
+      <div class="big" {% if rebotes %}style="color:#b91c1c"{% endif %}>{{ rebotes }}</div>
+      <div class="sub2"><a class="fila" href="{{ url_for('rebotes') }}">Ver rebotes →</a></div>
+    </div>
   </div>
 
   <div style="font-size:12px;color:#9ca3af;margin:-6px 0 8px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">

@@ -266,6 +266,12 @@
               {% endif %}
               <span class="evento-fecha" style="margin-left:auto">{{ m.created_at }}</span>
             </div>
+            {% if m.rebote %}
+              <div class="aviso-error" style="margin:4px 0 10px">
+                ⚠ <strong>Este correo rebotó:</strong> {{ m.rebote }}.
+                Revisa el email del venue (arriba) o descártalo si no sirve.
+              </div>
+            {% endif %}
             <form method="post" action="{{ url_for('guardar_mensaje', mensaje_id=m.id) }}">
               <label class="lbl-correo">Asunto
                 <input type="text" id="asunto_{{ m.id }}" name="asunto" value="{{ m.asunto or '' }}">

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Rebotes — CRM Bragi{% endblock %}
+{% block contenido %}
+
+  <h1 style="margin-top:6px">Correos rebotados</h1>
+  <div style="color:#6b7280;font-size:14px;margin-bottom:18px">
+    Correos que <strong>rebotaron</strong> (no existen / fueron rechazados) o que marcaron como
+    <strong>spam</strong>. Conviene <strong>sacarlos de tus tandas</strong>: muchos rebotes dañan la
+    reputación de tu dominio y hacen que tus correos caigan en spam.
+  </div>
+
+  {% if items %}
+    <table>
+      <thead>
+        <tr><th>Venue</th><th>Artista</th><th>Correo</th><th>Motivo</th><th>Cuándo</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for r in items %}
+          <tr>
+            <td><a class="fila" href="{{ url_for('ficha', venue_id=r.venue_id) }}">{{ r.nombre }}</a>
+              <div style="font-size:12px;color:#9ca3af">{{ r.ciudad or '' }}</div>
+            </td>
+            <td>{% if r.artista %}<span class="chip art-{{ r.artista }}">{{ r.artista }}</span>{% else %}—{% endif %}</td>
+            <td style="font-size:13px">{{ r.destinatario or '—' }}</td>
+            <td style="font-size:12px;color:#b91c1c">{{ r.rebote }}</td>
+            <td style="font-size:12px;color:#6b7280">{{ (r.fecha_envio or '')[:10] }}</td>
+            <td>
+              {% if r.estado_pipeline != 'descartado' %}
+                <form method="post" action="{{ url_for('decidir', venue_id=r.venue_id) }}"
+                      onsubmit="return confirm('¿Descartar {{ r.nombre }}? Sale de tus tandas de correo.')">
+                  <button class="btn gris" name="accion" value="descartar">🗑️ Descartar venue</button>
+                </form>
+              {% else %}
+                <span class="chip est-descartado">descartado</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:#9ca3af;margin-top:8px">
+      Tip: si el venue te interesa, en su ficha puedes corregir el correo (a veces hay otro válido en su web)
+      en vez de descartarlo.
+    </div>
+  {% else %}
+    <div class="vacio">Sin rebotes por ahora. 🎉 Tus correos se están entregando bien.</div>
+  {% endif %}
+
+{% endblock %}

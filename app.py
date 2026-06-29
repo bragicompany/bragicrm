@@ -152,6 +152,7 @@ def inicio():
         enviados_semana=database.contar_enviados_recientes(7),
         enviados_hoy=database.contar_enviados_hoy(),
         cuerpo_hoy=cuerpo_hoy,
+        rebotes=database.contar_rebotes(),
         recordatorios=database.listar_recordatorios()[:6],
         seguimiento_conteos=cadencia.conteos(),
     )
@@ -401,6 +402,12 @@ def cola():
     """Cola de llamada (Fase 6A): venues para gestión manual (llamada/WhatsApp/visita)."""
     items = cadencia.cola_llamada()
     return render_template("cola.html", items=items)
+
+
+@app.route("/rebotes")
+def rebotes():
+    """Correos que rebotaron o fueron marcados spam: para limpiarlos de la lista."""
+    return render_template("rebotes.html", items=database.listar_rebotes())
 
 
 @app.route("/venue/<int:venue_id>/seguimiento", methods=["POST"])
@@ -704,12 +711,15 @@ def marcar_mensaje(mensaje_id):
 
 @app.route("/webhook/sendgrid", methods=["POST"])
 def webhook_sendgrid():
-    """Recibe los eventos de SendGrid (Fase 6C-2) y marca 'abierto' automáticamente.
+    """Recibe los eventos de SendGrid (Fase 6C-2): marca 'abierto' y los REBOTES.
 
-    Protegido con un token secreto en la URL (SENDGRID_WEBHOOK_TOKEN en .env): la URL
-    que configuras en SendGrid debe terminar en  ?token=ESE_SECRETO. Si no hay token
-    configurado, se acepta sin verificar (modo local de pruebas).
+    Eventos que procesa:
+      - 'open'                       -> marca el correo como abierto.
+      - 'bounce' / 'dropped'         -> correo malo: marca rebote con su motivo.
+      - 'spamreport'                 -> marcaron spam: también se marca como rebote.
 
+    Protegido con un token secreto en la URL (SENDGRID_WEBHOOK_TOKEN). Si no hay
+    token configurado, se acepta sin verificar (modo local de pruebas).
     Nota: SendGrid NO informa 'respuestas' (eso sigue marcándose a mano).
     """
     secreto = os.getenv("SENDGRID_WEBHOOK_TOKEN")
@@ -720,20 +730,37 @@ def webhook_sendgrid():
     if isinstance(eventos, dict):
         eventos = [eventos]
 
+    # Motivo legible para cada tipo de rebote.
+    MOTIVOS = {
+        "bounce": "Rebotó (correo inexistente o rechazado)",
+        "dropped": "No se envió (descartado por SendGrid)",
+        "spamreport": "Marcado como spam por el destinatario",
+    }
+
     marcados = 0
     for ev in eventos:
-        if not isinstance(ev, dict) or ev.get("event") != "open":
+        if not isinstance(ev, dict):
             continue
-        # 1) Por la etiqueta que pusimos al enviar (lo más confiable).
+        tipo = ev.get("event")
+        if tipo not in ("open", "bounce", "dropped", "spamreport"):
+            continue
+        # Casar el evento con el mensaje: por la etiqueta (lo más confiable) o por sg id.
         mid = ev.get("mensaje_id")
-        # 2) Si no viene, casar por el id de SendGrid (por prefijo).
         if mid is None:
             mid = database.buscar_mensaje_por_sg(ev.get("sg_message_id"))
         try:
             mid = int(mid)
         except (TypeError, ValueError):
             continue
-        database.marcar_tracking(mid, abierto=True)
+        if tipo == "open":
+            database.marcar_tracking(mid, abierto=True)
+        else:
+            # Detalle del rebote si SendGrid lo manda (reason/type).
+            extra = ev.get("reason") or ev.get("type") or ""
+            motivo = MOTIVOS.get(tipo, tipo)
+            if extra:
+                motivo = f"{motivo} — {extra}"
+            database.marcar_rebote(mid, motivo)
         marcados += 1
 
     # Siempre 200 para que SendGrid no reintente; el conteo es solo informativo.

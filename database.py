@@ -187,6 +187,7 @@ def migrar():
             ("idioma", "TEXT"),          # 'en' / 'es'
             ("version", "TEXT"),         # 'A' / 'B' (version del cuerpo)
             ("asunto_variante", "TEXT"), # '1'..'4' (que asunto se eligio)
+            ("rebote", "TEXT"),          # motivo del rebote/spam (None = entregado OK) (6C-2)
         ],
     }
     conn = conectar()
@@ -503,6 +504,43 @@ def buscar_mensaje_por_sg(sg_message_id):
     ).fetchone()
     conn.close()
     return fila["id"] if fila else None
+
+
+def marcar_rebote(mensaje_id, motivo):
+    """Marca un mensaje como rebotado (bounce/dropped/spam) con su motivo."""
+    ahora = datetime.now().isoformat(timespec="seconds")
+    conn = conectar()
+    conn.execute(
+        "UPDATE mensajes SET rebote = ?, updated_at = ? WHERE id = ?",
+        ((motivo or "rebote")[:200], ahora, mensaje_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def listar_rebotes():
+    """Mensajes que rebotaron, con datos del venue (para la pantalla de Rebotes)."""
+    conn = conectar()
+    filas = conn.execute(
+        """SELECT m.id AS mensaje_id, m.destinatario, m.rebote, m.fecha_envio, m.asunto,
+                  v.id AS venue_id, v.nombre, v.ciudad, v.artista, v.email, v.estado_pipeline
+           FROM mensajes m
+           JOIN venues v ON v.id = m.venue_id
+           WHERE m.rebote IS NOT NULL AND m.rebote != ''
+           ORDER BY m.fecha_envio DESC, m.id DESC"""
+    ).fetchall()
+    conn.close()
+    return filas
+
+
+def contar_rebotes():
+    """Cuántos correos rebotaron (para el aviso del inicio)."""
+    conn = conectar()
+    fila = conn.execute(
+        "SELECT COUNT(*) AS n FROM mensajes WHERE rebote IS NOT NULL AND rebote != ''"
+    ).fetchone()
+    conn.close()
+    return fila["n"] if fila else 0
 
 
 def marcar_tracking(mensaje_id, abierto=None, respondido=None):
