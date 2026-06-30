@@ -53,12 +53,13 @@ La app busca venues y promotores, arma una ficha de cada uno, propone un correo 
 ## STACK TÉCNICO
 
 - **Lenguaje/framework:** Python + Flask.
-- **Base de datos:** SQLite al inicio (un archivo local). Migrar a Postgres cuando se despliegue el dashboard en la nube.
+- **Base de datos:** **bilingüe SQLite/Postgres** — usa SQLite en local (archivo `bragi_crm.db`) y Postgres en la nube. La capa `database.py` abstrae ambos.
 - **Búsqueda de venues:** Google Places API (la llave la tiene Alejandro, va en `.env`). *Nota: Places NO entrega correos.*
 - **Enriquecimiento de contacto:** entrar a la web del venue para encontrar página de booking/contacto. **NO scrapear Instagram** (va contra sus términos); las redes son solo para investigación manual.
-- **Envío de correo:** SendGrid (se integra en la Fase 5) desde `booking@bragicompany.com`.
-- **Nube (más adelante):** Railway o Render para el dashboard/seguimiento.
-- **Versionado:** Git.
+- **Correos con IA:** **Claude (Opus 4.8) vía el SDK `anthropic`** (`ANTHROPIC_API_KEY` en `.env`) — genera borradores y variantes A/B (`ai_email.py`).
+- **Envío de correo:** SendGrid desde `booking@bragicompany.com`, con **webhook** que marca aperturas y rebotes automáticamente.
+- **Nube:** **desplegado en Render** (ver `render.yaml` / `Procfile`), protegido con candado de contraseña.
+- **Versionado:** Git (repo con remoto en GitHub, rama `main`).
 
 ---
 
@@ -85,30 +86,44 @@ La app busca venues y promotores, arma una ficha de cada uno, propone un correo 
 
 ---
 
-## FASES DE CONSTRUCCIÓN
+## FASES DE CONSTRUCCIÓN (Fases 1–6 ✅ COMPLETADAS)
 
-- **Fase 1 — Buscar + CRM base:** Google Places → guardar venues en SQLite → vista de lista + ficha para verlos. ← EMPEZAR AQUÍ
-- **Fase 2 — Enriquecer + aprobar:** web del venue → booking/contacto → ficha completa; pantalla de aprobación #1.
-- **Fase 3 — Registro multicanal:** línea de tiempo de actividad + notas + encargado + recordatorios (gestión manual de llamadas/WhatsApp/visitas).
-- **Fase 4 — Correos con IA:** borradores personalizados por artista/categoría; pantalla de aprobación #2.
-- **Fase 5 — Enviar + tracking:** integrar SendGrid + autenticación del dominio; enviar aprobados; registrar aperturas/respuestas.
-- **Fase 6 — Cadencia + cola de llamada + dashboard:** follow-ups, escalado a cola de llamada, métricas; desplegar en la nube.
-- **Fase 7 — Afinar:** mejorar plantillas según resultados, ampliar ciudades.
-
-**MVP que ya da valor: Fases 1–5.**
+- **Fase 1 — Buscar + CRM base:** ✅ Google Places → guardar venues → vista de lista + ficha.
+- **Fase 2 — Enriquecer + aprobar:** ✅ web del venue → booking/contacto → ficha completa (botón "buscar contacto", por venue y en lote).
+- **Fase 3 — Registro multicanal:** ✅ línea de tiempo de actividad + notas + encargado + recordatorios.
+- **Fase 4 — Correos con IA:** ✅ borradores y variantes A/B con Claude, por artista/categoría; pantalla de aprobación.
+- **Fase 5 — Enviar + tracking:** ✅ SendGrid + webhook (aperturas y rebotes), envío de aprobados.
+- **Fase 6 — Cadencia + cola de llamada + dashboard:** ✅ follow-ups (día 4/9, mismo hilo `Re:`), cola de llamada, dashboard de métricas (apertura/respuesta/embudo/A/B), pantalla de rebotes, candado de contraseña, **desplegado en Render**.
+- **Fase 7 — Afinar:** 🔄 en curso — mejorar plantillas según resultados, ampliar ciudades.
 
 ---
 
-## ESTADO ACTUAL
+## ARQUITECTURA (referencia rápida del código real)
 
-- Cuentas listas: Google Cloud + Places API (con llave), correo `booking@bragicompany.com`.
-- Pendientes: SendGrid (Fase 5), GitHub, despliegue en nube (más adelante).
-- **Próximo paso: Fase 1.**
+**Archivos clave:**
+- `app.py` — servidor Flask y todas las rutas (ver lista abajo).
+- `database.py` — capa de datos bilingüe SQLite/Postgres.
+- `ai_email.py` — generación de correos con Claude (modelo `claude-opus-4-8`).
+- `email_sender.py` — envío vía SendGrid + manejo de webhook.
+- `places_search.py` — búsqueda de venues (Google Places).
+- `enrich.py` — enriquecimiento (web → booking/contacto).
+- `plantillas.py` / `PLANTILLAS_Correos_Bragi.md` — plantillas de correo.
+- `artistas.py` — perfiles de Dani Vásquez y Davikane (insumo para la IA).
+- `cadencia.py` — lógica de follow-ups y cola de llamada.
+- `db_tools.py` — utilidades de export/import portátil y respaldo.
+- `templates/` — `inicio, lista, ficha, artista, agenda, cola, rebotes, seguimientos, login, base`.
+
+**Tablas (SQLite/Postgres):**
+- `venues` — ficha de cada lugar (place_id, nombre, categoría, artista, ciudad, contacto, `estado_pipeline`, `mejor_canal`, `proxima_accion`, `recordatorio_fecha`, notas, etc.).
+- `mensajes` — correos (asunto, cuerpo, estado, `gancho`, `modelo`, `abierto`, `respondido`, `sg_message_id`, `destinatario`, `idioma`, `version` A/B, `rebote`).
+- `actividades` — línea de tiempo multicanal (canal, fecha, resumen, resultado, siguiente paso).
+
+**Estados de pipeline en uso:** `nuevo → calificado → ... → descartado` (el flujo objetivo es `nuevo → contactado → respondió → negociando → cerrado/descartado`).
 
 ---
 
-## DECISIONES QUE QUEDAN POR DEFINIR (no bloquean la Fase 1)
+## DECISIONES QUE QUEDAN POR DEFINIR
 
-- Ciudades concretas de arranque (TX y FL).
+- Ciudades concretas para ampliar (TX y FL).
 - Dirección física para los correos (requisito legal CAN-SPAM).
-- Tono/plantillas de correo por artista (se definen antes de la Fase 4).
+- Afinar tono/plantillas por artista según resultados reales.
