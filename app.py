@@ -47,6 +47,13 @@ except Exception as _e:
 RUTAS_LIBRES = {"login", "logout", "webhook_sendgrid", "static"}
 
 
+@app.teardown_request
+def _cerrar_db(exc):
+    # Cierra la conexion compartida que se uso para pintar esta pagina (ver
+    # database.conectar). Una sola conexion por pagina en vez de decenas.
+    database.cerrar_conexion_request(exc)
+
+
 @app.before_request
 def _exigir_login():
     if not os.getenv("APP_PASSWORD"):

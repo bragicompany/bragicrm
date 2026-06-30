@@ -44,8 +44,9 @@ class _Conexion:
     siga usando '?' y conn.execute(...) sin cambios: aqui se traduce a Postgres
     cuando hace falta y se delega lo demas a la conexion verdadera."""
 
-    def __init__(self, raw):
+    def __init__(self, raw, compartida=False):
         self._raw = raw
+        self._compartida = compartida
 
     def execute(self, sql, params=()):
         if DIALECTO == "postgres":
@@ -56,15 +57,24 @@ class _Conexion:
         return self._raw.commit()
 
     def close(self):
+        # En modo compartido (una sola conexion por pagina) NO se cierra aqui:
+        # la cierra el "teardown" del request al terminar de pintar la pagina.
+        # Asi evitamos abrir y cerrar la conexion decenas de veces por carga,
+        # que es lo que vuelve lenta la navegacion en Postgres/la nube.
+        if not self._compartida:
+            return self._raw.close()
+
+    def cerrar_de_verdad(self):
+        """Cierre real, ignorando el modo compartido (lo usa el teardown del request)."""
         return self._raw.close()
 
     def __getattr__(self, nombre):
         return getattr(self._raw, nombre)
 
 
-def conectar():
-    """Abre una conexion a la base (SQLite o Postgres). En ambos casos las filas se
-    leen por nombre de columna (fila['columna'])."""
+def _nueva_conexion(compartida=False):
+    """Abre una conexion REAL a la base (SQLite o Postgres). En ambos casos las filas
+    se leen por nombre de columna (fila['columna'])."""
     if DIALECTO == "postgres":
         import psycopg
         from psycopg.rows import dict_row
@@ -72,7 +82,44 @@ def conectar():
     else:
         raw = sqlite3.connect(DB_FILE)
         raw.row_factory = sqlite3.Row
-    return _Conexion(raw)
+    return _Conexion(raw, compartida=compartida)
+
+
+def conectar():
+    """Devuelve una conexion a la base.
+
+    Dentro de una pagina web (request de Flask) REUSA una sola conexion para toda
+    la carga: la primera funcion la abre y las demas la aprovechan. Esto evita abrir
+    decenas de conexiones por pagina (cada una cruza la red hasta Postgres) y es la
+    causa principal de la lentitud al navegar en la nube. La conexion se cierra sola
+    al final del request (ver cerrar_conexion_request).
+
+    Fuera de un request (scripts sueltos, arranque), abre una conexion normal que se
+    cierra como siempre."""
+    try:
+        from flask import g, has_request_context
+    except Exception:
+        has_request_context = None
+
+    if has_request_context and has_request_context():
+        conn = g.get("_db_conn")
+        if conn is None:
+            conn = _nueva_conexion(compartida=True)
+            g._db_conn = conn
+        return conn
+    return _nueva_conexion(compartida=False)
+
+
+def cerrar_conexion_request(_exc=None):
+    """Cierra la conexion compartida al terminar de pintar una pagina. La llama el
+    teardown del request en app.py. Si no se abrio ninguna, no hace nada."""
+    try:
+        from flask import g
+    except Exception:
+        return
+    conn = g.pop("_db_conn", None)
+    if conn is not None:
+        conn.cerrar_de_verdad()
 
 
 def crear_base():
