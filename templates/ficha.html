@@ -104,7 +104,16 @@
           <option value="whatsapp" {% if mc=='whatsapp' %}selected{% endif %}>whatsapp</option>
         </select>
       </label>
-      <label class="ancho">Sitio web <input type="text" name="web" value="{{ v.web or '' }}"></label>
+      <label class="ancho">Sitio web
+        <span style="display:flex;gap:8px;align-items:center">
+          <input type="text" name="web" value="{{ v.web or '' }}" style="flex:1">
+          {% if v.web %}
+            {% set web_url = v.web if v.web.startswith('http') else 'https://' ~ v.web %}
+            <a class="btn gris" href="{{ web_url }}" target="_blank" rel="noopener"
+               title="Abrir el sitio web en otra pestaña" style="white-space:nowrap">🌐 Abrir</a>
+          {% endif %}
+        </span>
+      </label>
       <label class="ancho">Página de booking/contacto <input type="text" name="pagina_booking" value="{{ v.pagina_booking or '' }}"></label>
       <label class="ancho">Email de booking <input type="text" name="email" value="{{ v.email or '' }}"></label>
       <label class="ancho">Redes (links, revisión manual) <input type="text" name="redes" value="{{ v.redes or '' }}"></label>
