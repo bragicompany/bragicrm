@@ -235,6 +235,7 @@ def migrar():
             ("version", "TEXT"),         # 'A' / 'B' (version del cuerpo)
             ("asunto_variante", "TEXT"), # '1'..'4' (que asunto se eligio)
             ("rebote", "TEXT"),          # motivo del rebote/spam (None = entregado OK) (6C-2)
+            ("rfc_message_id", "TEXT"),  # Message-ID real del correo (para hilar los follow-ups)
         ],
     }
     conn = conectar()
@@ -520,19 +521,41 @@ def eliminar_mensaje(mensaje_id):
     return venue_id
 
 
-def marcar_enviado(mensaje_id, sg_message_id, destinatario):
-    """Marca un mensaje como enviado (Fase 5): estado, id de SendGrid, destinatario y fecha."""
+def marcar_enviado(mensaje_id, sg_message_id, destinatario, rfc_message_id=None):
+    """Marca un mensaje como enviado (Fase 5): estado, id de SendGrid, destinatario y fecha.
+
+    'rfc_message_id' es el Message-ID real del correo (el encabezado que ven los
+    clientes de correo). Se guarda para que un follow-up posterior pueda apuntar a el
+    con In-Reply-To/References y asi caer en el MISMO hilo."""
     ahora = datetime.now().isoformat(timespec="seconds")
     conn = conectar()
     conn.execute(
         """UPDATE mensajes
            SET estado = 'enviado', sg_message_id = ?, destinatario = ?,
-               fecha_envio = ?, updated_at = ?
+               rfc_message_id = ?, fecha_envio = ?, updated_at = ?
            WHERE id = ?""",
-        (sg_message_id, destinatario, ahora, ahora, mensaje_id),
+        (sg_message_id, destinatario, rfc_message_id, ahora, ahora, mensaje_id),
     )
     conn.commit()
     conn.close()
+
+
+def message_id_original(venue_id):
+    """Message-ID del PRIMER correo enviado a un venue (no un seguimiento). Sirve para
+    que el follow-up vaya en el mismo hilo (In-Reply-To/References). None si aun no hay
+    envio o si ese correo se mando antes de que empezaramos a guardar el Message-ID."""
+    conn = conectar()
+    fila = conn.execute(
+        """SELECT rfc_message_id FROM mensajes
+           WHERE venue_id = ? AND estado = 'enviado'
+             AND (origen IS NULL OR origen != 'seguimiento')
+             AND rfc_message_id IS NOT NULL AND rfc_message_id != ''
+           ORDER BY fecha_envio ASC, id ASC
+           LIMIT 1""",
+        (venue_id,),
+    ).fetchone()
+    conn.close()
+    return fila["rfc_message_id"] if fila else None
 
 
 def buscar_mensaje_por_sg(sg_message_id):

@@ -58,13 +58,28 @@ def _cuerpo_html(cuerpo, direccion, con_logo=False):
     )
 
 
-def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
+def _nuevo_message_id(remitente):
+    """Genera un Message-ID único y válido para este correo, del estilo
+    <cadena@dominio-del-remitente>. Es el identificador que otros correos usan para
+    'responder' a este y quedar en el mismo hilo."""
+    import uuid
+    dominio = remitente.split("@")[-1] if "@" in remitente else "bragicompany.com"
+    return f"<{uuid.uuid4().hex}@{dominio}>"
+
+
+def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None, in_reply_to=None):
     """
-    Envía un correo. Devuelve el ID de SendGrid (string) si todo salió bien.
+    Envía un correo. Devuelve (sg_message_id, rfc_message_id) si todo salió bien:
+      - sg_message_id: el id interno de SendGrid (para el webhook de aperturas).
+      - rfc_message_id: el Message-ID real del correo (para hilar los follow-ups).
     Lanza FaltaSendgridError / EnvioError con mensajes claros si algo falla.
 
     'mensaje_id' (opcional) se adjunta como etiqueta (custom arg) para que el
     webhook de aperturas (Fase 6C-2) pueda casar el evento con este correo exacto.
+
+    'in_reply_to' (opcional) es el Message-ID del correo original: si viene, este
+    correo se envía como respuesta a ese hilo (In-Reply-To + References), para que
+    los seguimientos NO lleguen como correos nuevos.
     """
     api_key = os.getenv("SENDGRID_API_KEY")
     if not api_key or "pega_aqui" in api_key:
@@ -89,7 +104,7 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     import sendgrid
     from sendgrid.helpers.mail import (
         Mail, Email, To, ReplyTo, TrackingSettings, OpenTracking, SubscriptionTracking,
-        CustomArg,
+        CustomArg, Header,
     )
 
     # Correo personal: sin logo ni imágenes (mejora la llegada a Principal).
@@ -100,6 +115,16 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
         html_content=_cuerpo_html(cuerpo, direccion),
     )
     message.reply_to = ReplyTo(reply_to)
+
+    # Message-ID propio: así sabemos con qué id salió este correo y podemos hilar
+    # los follow-ups después (sin depender del id que inventaría SendGrid).
+    rfc_message_id = _nuevo_message_id(remitente)
+    message.header = Header("Message-ID", rfc_message_id)
+
+    # Si es un seguimiento, apunta al correo original para caer en el MISMO hilo.
+    if in_reply_to:
+        message.header = Header("In-Reply-To", in_reply_to)
+        message.header = Header("References", in_reply_to)
 
     # Etiqueta para el webhook de aperturas: liga el evento a este correo (6C-2).
     if mensaje_id is not None:
@@ -132,5 +157,7 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None):
     if resp.status_code not in (200, 201, 202):
         raise EnvioError(f"SendGrid respondió con un estado inesperado ({resp.status_code}).")
 
-    # El ID del mensaje viene en la cabecera X-Message-Id.
-    return (resp.headers.get("X-Message-Id") or "") if hasattr(resp, "headers") else ""
+    # El ID de SendGrid viene en la cabecera X-Message-Id; el rfc_message_id es el
+    # que generamos arriba (para hilar los follow-ups).
+    sg_id = (resp.headers.get("X-Message-Id") or "") if hasattr(resp, "headers") else ""
+    return sg_id, rfc_message_id
