@@ -67,7 +67,8 @@ def _nuevo_message_id(remitente):
     return f"<{uuid.uuid4().hex}@{dominio}>"
 
 
-def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None, in_reply_to=None):
+def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None, in_reply_to=None,
+                  references=None):
     """
     Envía un correo. Devuelve (sg_message_id, rfc_message_id) si todo salió bien:
       - sg_message_id: el id interno de SendGrid (para el webhook de aperturas).
@@ -77,9 +78,11 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None, in_reply_to=Non
     'mensaje_id' (opcional) se adjunta como etiqueta (custom arg) para que el
     webhook de aperturas (Fase 6C-2) pueda casar el evento con este correo exacto.
 
-    'in_reply_to' (opcional) es el Message-ID del correo original: si viene, este
-    correo se envía como respuesta a ese hilo (In-Reply-To + References), para que
-    los seguimientos NO lleguen como correos nuevos.
+    Para que los seguimientos caigan en el MISMO hilo (y no como correos nuevos):
+    'in_reply_to' (opcional) es el Message-ID del correo ANTERIOR (el padre directo).
+    'references' (opcional) es la cadena COMPLETA de Message-IDs previos del hilo
+      (lista o texto): [original, F1, ...]. Cuantos más clientes de correo (Gmail,
+      Outlook, Apple Mail) reciban la cadena completa, mejor agrupan el hilo.
     """
     api_key = os.getenv("SENDGRID_API_KEY")
     if not api_key or "pega_aqui" in api_key:
@@ -121,10 +124,17 @@ def enviar_correo(destinatario, asunto, cuerpo, mensaje_id=None, in_reply_to=Non
     rfc_message_id = _nuevo_message_id(remitente)
     message.header = Header("Message-ID", rfc_message_id)
 
-    # Si es un seguimiento, apunta al correo original para caer en el MISMO hilo.
+    # Si es un seguimiento, engancha la cadena para caer en el MISMO hilo:
+    #  - In-Reply-To: el correo anterior (padre directo).
+    #  - References: toda la cadena previa (original, F1, ...). Si no la pasan,
+    #    se usa al menos el in_reply_to.
+    if isinstance(references, (list, tuple)):
+        references = " ".join(r for r in references if r)
     if in_reply_to:
         message.header = Header("In-Reply-To", in_reply_to)
-        message.header = Header("References", in_reply_to)
+    ref_final = references or in_reply_to
+    if ref_final:
+        message.header = Header("References", ref_final)
 
     # Etiqueta para el webhook de aperturas: liga el evento a este correo (6C-2).
     if mensaje_id is not None:

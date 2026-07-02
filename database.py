@@ -540,22 +540,21 @@ def marcar_enviado(mensaje_id, sg_message_id, destinatario, rfc_message_id=None)
     conn.close()
 
 
-def message_id_original(venue_id):
-    """Message-ID del PRIMER correo enviado a un venue (no un seguimiento). Sirve para
-    que el follow-up vaya en el mismo hilo (In-Reply-To/References). None si aun no hay
-    envio o si ese correo se mando antes de que empezaramos a guardar el Message-ID."""
+def hilo_message_ids(venue_id):
+    """Cadena de Message-IDs de TODOS los correos ya enviados a un venue, en orden
+    (del primero al ultimo): [original, F1, F2, ...]. Sirve para enganchar el proximo
+    seguimiento a la cadena completa (References = toda la lista, In-Reply-To = el
+    ultimo). Lista vacia si aun no hay envios con Message-ID guardado."""
     conn = conectar()
-    fila = conn.execute(
+    filas = conn.execute(
         """SELECT rfc_message_id FROM mensajes
            WHERE venue_id = ? AND estado = 'enviado'
-             AND (origen IS NULL OR origen != 'seguimiento')
              AND rfc_message_id IS NOT NULL AND rfc_message_id != ''
-           ORDER BY fecha_envio ASC, id ASC
-           LIMIT 1""",
+           ORDER BY fecha_envio ASC, id ASC""",
         (venue_id,),
-    ).fetchone()
+    ).fetchall()
     conn.close()
-    return fila["rfc_message_id"] if fila else None
+    return [f["rfc_message_id"] for f in filas]
 
 
 def buscar_mensaje_por_sg(sg_message_id):

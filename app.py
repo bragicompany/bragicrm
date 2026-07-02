@@ -683,13 +683,17 @@ def enviar_mensaje(mensaje_id):
     destinatario = ", ".join(destinatarios)  # para registrar a quién(es) se envió
 
     try:
-        # Si es un seguimiento, apúntalo al correo original del venue para que caiga
-        # en el mismo hilo (no como correo nuevo).
-        in_reply_to = None
+        # Si es un seguimiento, engánchalo a la cadena de correos ya enviados a este
+        # venue (original, F1, ...) para que caiga en el mismo hilo, detrás del último.
+        in_reply_to = references = None
         if m["origen"] == "seguimiento":
-            in_reply_to = database.message_id_original(m["venue_id"])
+            cadena = database.hilo_message_ids(m["venue_id"])  # [original, F1, ...]
+            if cadena:
+                in_reply_to = cadena[-1]   # el correo anterior (padre directo)
+                references = cadena         # toda la cadena previa
         sg_id, rfc_id = email_sender.enviar_correo(
-            destinatarios, m["asunto"], m["cuerpo"], mensaje_id=m["id"], in_reply_to=in_reply_to)
+            destinatarios, m["asunto"], m["cuerpo"], mensaje_id=m["id"],
+            in_reply_to=in_reply_to, references=references)
         database.marcar_enviado(mensaje_id, sg_id, destinatario, rfc_message_id=rfc_id)
         # Mueve el venue en el pipeline y deja registro en la línea de tiempo.
         if venue and venue["estado_pipeline"] in ("nuevo", "calificado"):
