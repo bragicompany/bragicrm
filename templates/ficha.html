@@ -123,6 +123,19 @@
       <label>Próxima acción <input type="text" name="proxima_accion" value="{{ v.proxima_accion or '' }}"></label>
       <label>Recordatorio <input type="date" name="recordatorio_fecha" value="{{ v.recordatorio_fecha or '' }}"></label>
       <label class="ancho">Notas <textarea name="notas" rows="3">{{ v.notas or '' }}</textarea></label>
+      <div class="ancho">
+        {# 'etiquetas_form' marca que las etiquetas venían en el envío (para poder desmarcarlas todas). #}
+        <input type="hidden" name="etiquetas_form" value="1">
+        <span style="display:block;font-size:13px;color:#64748b;margin-bottom:5px">Etiquetas</span>
+        {% set tags_v = (v.etiquetas or '').split(',') %}
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          {% for clave, nombre in etiquetas %}
+            <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer">
+              <input type="checkbox" name="etiquetas" value="{{ clave }}" {% if clave in tags_v %}checked{% endif %}> {{ nombre }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
     </div>
     <button class="btn" type="submit" style="margin-top:14px">Guardar cambios</button>
   </form>

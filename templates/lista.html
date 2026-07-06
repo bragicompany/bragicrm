@@ -52,6 +52,15 @@
         <option value="no" {% if seleccion.email == 'no' %}selected{% endif %}>Sin correo</option>
       </select>
     </div>
+    <div>
+      <label>Etiqueta</label>
+      <select name="etiqueta" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for clave, nombre in etiquetas %}
+          <option value="{{ clave }}" {% if seleccion.etiqueta == clave %}selected{% endif %}>{{ nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <button class="btn" type="submit">Filtrar</button>
     <a class="btn gris" href="{{ url_for('lista') }}">Limpiar</a>
   </form>
@@ -70,6 +79,7 @@
           <th>Telefono</th>
           <th>Google</th>
           <th>Estado</th>
+          <th>Etiquetas</th>
         </tr>
       </thead>
       <tbody>
@@ -86,6 +96,28 @@
               {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google ↗</a>{% else %}—{% endif %}
             </td>
             <td><span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span></td>
+            <td style="position:relative">
+              {% set tags_v = (v.etiquetas or '').split(',') %}
+              <details class="etq">
+                <summary style="cursor:pointer;list-style:none">
+                  {% if v.etiquetas %}
+                    {% for clave, nombre in etiquetas %}{% if clave in tags_v %}<span class="chip">{{ nombre }}</span> {% endif %}{% endfor %}
+                  {% else %}
+                    <span style="color:#94a3b8;font-size:13px">+ etiquetar</span>
+                  {% endif %}
+                </summary>
+                <form method="post" action="{{ url_for('etiquetas_venue', venue_id=v.id) }}"
+                      style="position:absolute;z-index:20;margin-top:4px;background:#fff;border:1px solid var(--linea);border-radius:8px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,.14);min-width:210px;display:flex;flex-direction:column;gap:7px">
+                  <input type="hidden" name="volver" value="{{ lista_actual }}">
+                  {% for clave, nombre in etiquetas %}
+                    <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer">
+                      <input type="checkbox" name="etiquetas" value="{{ clave }}" {% if clave in tags_v %}checked{% endif %}> {{ nombre }}
+                    </label>
+                  {% endfor %}
+                  <button class="btn" type="submit" style="margin-top:2px">Guardar</button>
+                </form>
+              </details>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

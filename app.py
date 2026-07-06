@@ -178,6 +178,9 @@ def lista():
     buscar = request.args.get("q") or None
     email_filtro = request.args.get("email") or ""  # 'si' | 'no' | ''
     con_email = True if email_filtro == "si" else (False if email_filtro == "no" else None)
+    etiqueta = request.args.get("etiqueta") or None
+    if etiqueta not in ETIQUETAS_VALIDAS:
+        etiqueta = None
 
     venues = database.listar_venues(
         ciudad=ciudad,
@@ -186,6 +189,7 @@ def lista():
         categoria=categoria,
         buscar=buscar,
         con_email=con_email,
+        etiqueta=etiqueta,
     )
 
     # Opciones para los menus de filtro (valores que existen en la base).
@@ -202,9 +206,11 @@ def lista():
         "categoria": categoria or "",
         "q": buscar or "",
         "email": email_filtro,
+        "etiqueta": etiqueta or "",
     }
 
-    return render_template("lista.html", venues=venues, filtros=filtros, seleccion=seleccion)
+    return render_template("lista.html", venues=venues, filtros=filtros, seleccion=seleccion,
+                           etiquetas=ETIQUETAS, lista_actual=request.full_path.rstrip("?"))
 
 
 @app.route("/venue/<int:venue_id>")
@@ -239,6 +245,7 @@ def ficha(venue_id):
         asuntos_por_idioma=asuntos_por_idioma,
         idioma_default=(perfil.get("idioma_correo", "en") if perfil else "en"),
         brochure_falta=brochure_falta,
+        etiquetas=ETIQUETAS,
         enviados_semana=database.contar_enviados_recientes(7),
         correo_ok=request.args.get("correo_ok"),
         correo_error=request.args.get("correo_error"),
@@ -255,6 +262,34 @@ CAMPOS_FORM = [
     "mejor_canal", "proxima_accion", "recordatorio_fecha", "notas",
 ]
 
+# Etiquetas disponibles para marcar venues: (clave interna, nombre visible).
+# La clave se guarda en la base (columna 'etiquetas', separadas por coma); el nombre
+# es lo que se muestra. Para agregar una etiqueta nueva, añade una línea aquí.
+ETIQUETAS = [
+    ("recontactar", "Recontactar (otro artista)"),
+    ("buen_contacto", "Buen contacto"),
+    ("no_molestar", "No molestar"),
+]
+ETIQUETAS_VALIDAS = {clave for clave, _ in ETIQUETAS}
+
+
+def _leer_etiquetas_form():
+    """Lee las etiquetas marcadas en un formulario (casillas name='etiquetas'),
+    descarta las desconocidas y las devuelve como texto 'a,b' (o None si ninguna)."""
+    marcadas = [e for e in request.form.getlist("etiquetas") if e in ETIQUETAS_VALIDAS]
+    return ",".join(marcadas) or None
+
+
+@app.route("/venue/<int:venue_id>/etiquetas", methods=["POST"])
+def etiquetas_venue(venue_id):
+    """Guarda las etiquetas de un venue (desde la lista o la ficha) y regresa a donde
+    estabas. Nada más se toca del venue."""
+    if database.obtener_venue(venue_id) is None:
+        abort(404)
+    database.actualizar_venue(venue_id, {"etiquetas": _leer_etiquetas_form()})
+    destino = request.form.get("volver") or session.get("ultima_lista") or url_for("lista")
+    return redirect(destino)
+
 
 @app.route("/venue/<int:venue_id>/guardar", methods=["POST"])
 def guardar(venue_id):
@@ -263,6 +298,10 @@ def guardar(venue_id):
     # Solo tocar los campos que realmente vienen en el formulario (evita borrar datos
     # si llega un envio parcial). Un campo vacio si limpia ese campo (a None).
     cambios = {c: (request.form.get(c) or None) for c in CAMPOS_FORM if c in request.form}
+    # Las etiquetas son casillas (varias): solo tocarlas si el formulario las incluye.
+    # El campo oculto 'etiquetas_form' marca que la sección de etiquetas venía en el envío.
+    if "etiquetas_form" in request.form:
+        cambios["etiquetas"] = _leer_etiquetas_form()
     database.actualizar_venue(venue_id, cambios)
     return redirect(url_for("ficha", venue_id=venue_id, guardado="1"))
 

@@ -225,6 +225,7 @@ def migrar():
     cambios = {
         "venues": [
             ("enriquecido_el", "TEXT"),  # cuando se enriquecio (None = aun no)
+            ("etiquetas", "TEXT"),       # etiquetas separadas por coma (ej. "recontactar,no_molestar")
         ],
         "mensajes": [
             ("sg_message_id", "TEXT"),   # id del envio en SendGrid (Fase 5)
@@ -260,7 +261,7 @@ COLUMNAS_EDITABLES = {
     "categoria", "artista", "ciudad", "estado", "pais", "direccion", "telefono",
     "web", "pagina_booking", "email", "redes", "encargado", "capacidad", "genero",
     "mejor_canal", "estado_pipeline", "proxima_accion", "recordatorio_fecha",
-    "notas", "enriquecido_el",
+    "notas", "enriquecido_el", "etiquetas",
 }
 
 
@@ -328,10 +329,10 @@ def guardar_venue(datos):
 
 
 def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=None,
-                  buscar=None, con_email=None):
+                  buscar=None, con_email=None, etiqueta=None):
     """Devuelve los venues, con filtros opcionales. Ordenados por fecha de creacion (mas nuevos primero).
     'buscar' filtra por nombre (texto parcial). 'con_email': True = solo con correo,
-    False = solo sin correo, None = todos."""
+    False = solo sin correo, None = todos. 'etiqueta': solo los que tengan esa etiqueta."""
     consulta = "SELECT * FROM venues WHERE 1=1"
     params = []
     if ciudad:
@@ -356,6 +357,12 @@ def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=Non
         consulta += " AND email IS NOT NULL AND email != ''"
     elif con_email is False:
         consulta += " AND (email IS NULL OR email = '')"
+    if etiqueta:
+        # Las etiquetas se guardan separadas por coma. Rodeamos con comas para casar la
+        # etiqueta completa (evita que 'contacto' case dentro de 'buen_contacto', etc.).
+        # '||' concatena en SQLite y Postgres por igual.
+        consulta += " AND (',' || COALESCE(etiquetas, '') || ',') LIKE ?"
+        params.append(f"%,{etiqueta},%")
     consulta += " ORDER BY created_at DESC"
 
     conn = conectar()
