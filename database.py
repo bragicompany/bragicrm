@@ -347,8 +347,11 @@ def listar_venues(ciudad=None, artista=None, estado_pipeline=None, categoria=Non
         consulta += " AND categoria = ?"
         params.append(categoria)
     if buscar:
-        consulta += " AND nombre LIKE ?"
-        params.append(f"%{buscar}%")
+        # LOWER en ambos lados: en Postgres (la nube) LIKE distingue mayusculas y no
+        # encontraba "Carlos" al buscar "carlos". Comparar en minusculas lo arregla en
+        # SQLite y Postgres por igual.
+        consulta += " AND LOWER(nombre) LIKE ?"
+        params.append(f"%{buscar.lower()}%")
     if con_email is True:
         consulta += " AND email IS NOT NULL AND email != ''"
     elif con_email is False:

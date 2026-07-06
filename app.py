@@ -396,6 +396,9 @@ def agenda():
 @app.route("/seguimientos")
 def seguimientos():
     """Cadencia (Fase 6A): a quién le toca follow-up hoy y quién está esperando."""
+    # Recuerda esta pantalla como "última lista" para que el "← Volver" de la ficha
+    # regrese aquí (y no a la lista completa de venues) cuando llegaste desde Seguimientos.
+    session["ultima_lista"] = request.full_path.rstrip("?")
     toca, esperando = cadencia.seguimientos()
     return render_template(
         "seguimientos.html",
@@ -407,6 +410,8 @@ def seguimientos():
 @app.route("/cola")
 def cola():
     """Cola de llamada (Fase 6A): venues para gestión manual (llamada/WhatsApp/visita)."""
+    # Igual que Seguimientos: recuerda esta pantalla para que el "Volver" regrese aquí.
+    session["ultima_lista"] = request.full_path.rstrip("?")
     items = cadencia.cola_llamada()
     return render_template("cola.html", items=items)
 
