@@ -68,6 +68,7 @@
   <div class="conteo">{{ venues|length }} venue(s)</div>
 
   {% if venues %}
+    <div class="tabla-scroll">
     <table>
       <thead>
         <tr>
@@ -96,7 +97,7 @@
               {% if g %}<a href="{{ g }}" target="_blank" rel="noopener">Ver en Google ↗</a>{% else %}—{% endif %}
             </td>
             <td><span class="chip estado est-{{ v.estado_pipeline or 'nuevo' }}">{{ v.estado_pipeline or "nuevo" }}</span></td>
-            <td style="position:relative">
+            <td>
               {% set tags_v = (v.etiquetas or '').split(',') %}
               <details class="etq">
                 <summary style="cursor:pointer;list-style:none">
@@ -107,7 +108,7 @@
                   {% endif %}
                 </summary>
                 <form method="post" action="{{ url_for('etiquetas_venue', venue_id=v.id) }}"
-                      style="position:absolute;z-index:20;margin-top:4px;background:#fff;border:1px solid var(--linea);border-radius:8px;padding:10px;box-shadow:0 6px 18px rgba(0,0,0,.14);min-width:210px;display:flex;flex-direction:column;gap:7px">
+                      style="margin-top:6px;background:#fff;border:1px solid var(--linea);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:7px">
                   <input type="hidden" name="volver" value="{{ lista_actual }}">
                   {% for clave, nombre in etiquetas %}
                     <label style="display:flex;align-items:center;gap:7px;font-size:14px;cursor:pointer">
@@ -122,6 +123,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
   {% else %}
     <div class="vacio">
       <p>Todavia no hay venues que coincidan.</p>

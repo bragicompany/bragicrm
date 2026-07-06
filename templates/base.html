@@ -35,6 +35,10 @@
     th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--linea); font-size:14px; }
     th { background:#fafbf6; color:var(--gris); font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.04em; }
     tr:hover td { background:#fbffe6; }
+    /* Tabla ancha: se desliza en horizontal y las columnas no se apachurran. */
+    .tabla-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:10px; }
+    .tabla-scroll table { border-radius:0; box-shadow:none; }
+    .tabla-scroll th, .tabla-scroll td { white-space:nowrap; }
     a.fila { color:#111; text-decoration:none; font-weight:700; }
     a.fila:hover { color:var(--enlace); }
 
