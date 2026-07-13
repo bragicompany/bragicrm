@@ -226,6 +226,12 @@ def migrar():
         "venues": [
             ("enriquecido_el", "TEXT"),  # cuando se enriquecio (None = aun no)
             ("etiquetas", "TEXT"),       # etiquetas separadas por coma (ej. "recontactar,no_molestar")
+            # --- Filtro de encaje (fit): que tan bien le late el venue al artista (Fase 7) ---
+            ("fit_score", "INTEGER"),    # 0-100: encaje con el genero/publico del artista (None = aun no evaluado)
+            ("fit_motivo", "TEXT"),      # una linea: por que ese puntaje (el "porque" que ve Alejandro)
+            ("fit_evaluado_el", "TEXT"), # cuando se evaluo el encaje (None = aun no)
+            ("tipos_google", "TEXT"),    # tipos de lugar que da Google (senal de genero)
+            ("resumen_google", "TEXT"),  # resumen editorial de Google (senal de genero)
         ],
         "mensajes": [
             ("sg_message_id", "TEXT"),   # id del envio en SendGrid (Fase 5)
@@ -262,6 +268,7 @@ COLUMNAS_EDITABLES = {
     "web", "pagina_booking", "email", "redes", "encargado", "capacidad", "genero",
     "mejor_canal", "estado_pipeline", "proxima_accion", "recordatorio_fecha",
     "notas", "enriquecido_el", "etiquetas",
+    "fit_score", "fit_motivo", "fit_evaluado_el", "tipos_google", "resumen_google",
 }
 
 
@@ -375,6 +382,16 @@ def obtener_venue(venue_id):
     """Devuelve un solo venue por su id (para la ficha)."""
     conn = conectar()
     fila = conn.execute("SELECT * FROM venues WHERE id = ?", (venue_id,)).fetchone()
+    conn.close()
+    return fila
+
+
+def obtener_venue_por_place_id(place_id):
+    """Devuelve un venue por su place_id de Google (para evaluar lo recién buscado)."""
+    if not place_id:
+        return None
+    conn = conectar()
+    fila = conn.execute("SELECT * FROM venues WHERE place_id = ?", (place_id,)).fetchone()
     conn.close()
     return fila
 

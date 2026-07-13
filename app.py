@@ -23,6 +23,7 @@ import ai_email
 import plantillas
 import email_sender
 import enrich
+import evaluar
 import cadencia
 
 app = Flask(__name__)
@@ -561,6 +562,19 @@ def buscar_lugares(nombre):
             ciudad=ciudad, estado=estado, pais="USA", max_resultados=20,
         )
         msg = f"Búsqueda en {donde}: {r['nuevos']} nuevos, {r['repetidos']} ya estaban (de {r['total']})."
+
+        # Filtro de encaje AUTOMÁTICO: evalúa SOLO los venues recién buscados y los
+        # rutea (califica / descarta / deja para revisar). Nunca toca los que ya tenías.
+        nuevos = [database.obtener_venue_por_place_id(pid) for pid in r.get("place_ids_nuevos", [])]
+        nuevos = [v for v in nuevos if v is not None]
+        if nuevos:
+            try:
+                c = evaluar.filtrar_nuevos(nuevos, usar_web=False)
+                msg += (f" Filtro de encaje: ✅ {c['calificado']} califican, "
+                        f"🔍 {c['nuevo']} a revisar, ❌ {c['descartado']} descartados"
+                        + (f", {c['errores']} sin evaluar" if c.get("errores") else "") + ".")
+            except Exception:
+                msg += " (El filtro de encaje no se pudo aplicar esta vez; los nuevos quedaron sin puntaje.)"
         return redirect(destino + f"?ok={msg}")
     except places_search.BusquedaError as e:
         return redirect(destino + f"?error={e}")

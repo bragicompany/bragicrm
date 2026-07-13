@@ -42,6 +42,10 @@ CAMPOS = (
     "places.internationalPhoneNumber,"
     "places.websiteUri,"
     "places.rating,"
+    "places.userRatingCount,"      # tamaño/popularidad (referencia)
+    "places.primaryTypeDisplayName,"  # tipo principal legible (señal de género)
+    "places.types,"                # tipos del lugar (señal de género para el filtro de encaje)
+    "places.editorialSummary,"     # resumen de Google (señal de género)
     "places.addressComponents,"
     "nextPageToken"
 )
@@ -111,10 +115,16 @@ def buscar_y_guardar(query, artista, categoria, ciudad, estado, pais="USA", max_
     lugares = buscar(query, max_resultados)
     nuevos = 0
     repetidos = 0
+    place_ids_nuevos = []  # los recién insertados (para filtrarlos por encaje después)
     for lugar in lugares:
         nombre = (lugar.get("displayName") or {}).get("text")
         if not nombre:
             continue
+        # Señales de género para el filtro de encaje (evaluar.py): tipos y resumen.
+        tipos = lugar.get("types") or []
+        tipo_principal = (lugar.get("primaryTypeDisplayName") or {}).get("text")
+        tipos_txt = ", ".join([t for t in ([tipo_principal] + tipos) if t]) or None
+        resumen_google = (lugar.get("editorialSummary") or {}).get("text")
         datos = {
             "place_id": lugar.get("id"),
             "nombre": nombre,
@@ -127,13 +137,20 @@ def buscar_y_guardar(query, artista, categoria, ciudad, estado, pais="USA", max_
             "telefono": lugar.get("nationalPhoneNumber") or lugar.get("internationalPhoneNumber"),
             "web": lugar.get("websiteUri"),
             "rating": lugar.get("rating"),
+            "tipos_google": tipos_txt,
+            "resumen_google": resumen_google,
             "fuente": "google_places",
         }
         if database.guardar_venue(datos):
             nuevos += 1
+            if datos.get("place_id"):
+                place_ids_nuevos.append(datos["place_id"])
         else:
             repetidos += 1
-    return {"nuevos": nuevos, "repetidos": repetidos, "total": len(lugares)}
+    return {
+        "nuevos": nuevos, "repetidos": repetidos, "total": len(lugares),
+        "place_ids_nuevos": place_ids_nuevos,
+    }
 
 
 def ejecutar(query, artista, categoria, ciudad, estado, pais, max_resultados):
@@ -146,6 +163,20 @@ def ejecutar(query, artista, categoria, ciudad, estado, pais, max_resultados):
         sys.exit(1)
     print(f"Google devolvio {r['total']} lugares.")
     print(f"\nResumen: {r['nuevos']} nuevos, {r['repetidos']} ya estaban.")
+
+    # Filtro de encaje sobre lo RECIÉN buscado (nunca toca lo que ya tenías).
+    nuevos = [database.obtener_venue_por_place_id(pid) for pid in r.get("place_ids_nuevos", [])]
+    nuevos = [v for v in nuevos if v is not None]
+    if nuevos:
+        import evaluar  # import local: no obligamos a tener la llave de Anthropic para solo buscar
+        try:
+            c = evaluar.filtrar_nuevos(nuevos, usar_web=False)
+            print(f"Filtro de encaje: {c['calificado']} califican, {c['nuevo']} a revisar, "
+                  f"{c['descartado']} descartados"
+                  + (f", {c['errores']} sin evaluar" if c.get("errores") else "") + ".")
+        except Exception as e:
+            print(f"(No se pudo aplicar el filtro de encaje: {e})")
+
     print("Abre la app web para verlos:  python3 app.py\n")
 
 

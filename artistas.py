@@ -41,6 +41,17 @@ ARTISTAS = {
             "Lanzamiento de su álbum debut 'SELAH' (2026): momento ideal para alinear una fecha con la campaña del disco.",
         ],
         "tono": "Corporativo y formal (B2B), en inglés profesional de negocios; transmite seriedad y confianza de una empresa establecida; conciso y respetuoso.",
+        # --- Encaje (fit): para el evaluador. Afines = encaja o PODRÍA encajar (se conservan).
+        #     Incompatibles = géneros claramente distintos (solo esto se auto-descarta). ---
+        "generos_afines": [
+            "R&B", "soul", "neo-soul", "pop", "latin pop", "hip-hop", "rap", "urban",
+            "afrobeat", "dancehall", "reggaeton", "Top 40", "música en vivo variada",
+            "lounge", "rooftop", "supper club", "bar con música en vivo", "eventos privados",
+        ],
+        "generos_incompatibles": [
+            "country americano", "rock clásico", "rock de los 80/90", "heavy metal", "punk",
+            "banda / regional mexicano exclusivo", "EDM/techno exclusivo", "jazz tradicional exclusivo",
+        ],
     },
     "Davikane": {
         "nombre_artistico": "Davikane",
@@ -73,6 +84,18 @@ ARTISTAS = {
             "Presencia en TV, radio, podcasts y redes activas: artista en crecimiento con respaldo de management profesional (Bragi Company).",
         ],
         "tono": "Corporativo y formal (B2B), en inglés profesional de negocios; transmite seriedad y confianza de una empresa establecida; conciso y respetuoso.",
+        # --- Encaje (fit): para el evaluador. Afines = encaja o PODRÍA encajar (se conservan).
+        #     Incompatibles = géneros claramente distintos (solo esto se auto-descarta). ---
+        "generos_afines": [
+            "regional mexicano", "banda", "norteño", "corridos", "cumbia", "tejano",
+            "tex-mex", "mariachi", "ranchera", "grupero", "latin pop", "tropical", "salsa",
+            "música en español", "eventos latinos", "quinceañeras", "bodas", "cantina",
+            "salón de eventos", "bar/restaurante latino con música en vivo",
+        ],
+        "generos_incompatibles": [
+            "rock clásico", "rock de los 80/90", "country americano", "heavy metal", "punk",
+            "EDM/techno exclusivo", "jazz tradicional exclusivo", "R&B/hip-hop en inglés exclusivo",
+        ],
     },
 }
 
