@@ -33,6 +33,7 @@ import sys
 import json
 import argparse
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -209,17 +210,44 @@ def evaluar_y_guardar(venue, usar_web=True):
     return r
 
 
-def filtrar_nuevos(venues, usar_web=False):
+def filtrar_nuevos(venues, usar_web=False, paralelo=6):
     """Filtro automático para una tanda de venues RECIÉN buscados: evalúa y rutea
     cada uno. Tolera fallos (si uno truena, sigue con los demás). Por defecto NO baja
-    la web (rápido, se apoya en nombre + tipo/resumen de Google). Devuelve conteos."""
+    la web (rápido, se apoya en nombre + tipo/resumen de Google). Devuelve conteos.
+
+    Las llamadas a la IA se hacen EN PARALELO (varias a la vez) para no bloquear la
+    búsqueda: 20 en fila tardarían ~100s (revienta el timeout del servidor); en
+    paralelo bajan a ~15-20s. Las escrituras a la base se hacen después, en orden."""
     conteo = {"calificado": 0, "descartado": 0, "nuevo": 0, "errores": 0}
-    for v in venues:
+    if not venues:
+        return conteo
+
+    # 1) Evaluar en paralelo (solo llamadas a la IA; NO tocan la base todavía).
+    def _evaluar(v):
         try:
-            r = evaluar_y_guardar(v, usar_web=usar_web)
+            return v, evaluar_uno(v, usar_web=usar_web)
+        except Exception:
+            return v, None
+
+    with ThreadPoolExecutor(max_workers=min(paralelo, len(venues))) as pool:
+        resultados = list(pool.map(_evaluar, venues))
+
+    # 2) Guardar en orden (una conexión a la vez; evita escrituras concurrentes).
+    for v, r in resultados:
+        if r is None:
+            conteo["errores"] += 1  # queda 'nuevo' sin puntaje; se revisa a mano
+            continue
+        try:
+            database.actualizar_venue(v["id"], {
+                "fit_score": r["fit_score"],
+                "fit_motivo": r["motivo"],
+                "genero": r["genero_detectado"],
+                "fit_evaluado_el": datetime.now().isoformat(timespec="seconds"),
+                "estado_pipeline": r["estado_sugerido"],
+            })
             conteo[r["estado_sugerido"]] = conteo.get(r["estado_sugerido"], 0) + 1
         except Exception:
-            conteo["errores"] += 1  # el venue queda 'nuevo' sin puntaje; se revisa a mano
+            conteo["errores"] += 1
     return conteo
 
 
